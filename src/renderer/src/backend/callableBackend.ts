@@ -18,6 +18,7 @@ const KNOWN_CODES = new Set<DomainErrorCode>([
   'INVITATION_EXPIRED',
   'INVITATION_EMAIL_MISMATCH',
   'BUDGET_HAS_ACTIVE_MEMBERS',
+  'DUPLICATE_REVIEW_REQUIRED',
 ]);
 
 /** Keeps the server's domain code so the UI can explain what went wrong. */
@@ -47,6 +48,8 @@ export function createCallableBackend(functions: Functions): BudgetBackend {
     ensureUserProfile: () => call('ensureUserProfile'),
     updatePreferences: (request) => call('updatePreferences', request),
     createBudget: (request) => call('createBudget', request),
+    createAccount: (request) => call('createAccount', request),
+    commitCsvImport: (request) => call('commitCsvImport', request),
     createInvitation: (request) => call('createInvitation', request),
     previewInvitation: (token) => call('previewInvitation', { token }),
     acceptInvitation: (token) => call('acceptInvitation', { token }),

@@ -67,3 +67,28 @@ export async function seedEndedMembership(
     });
   });
 }
+
+export async function seedAccount(
+  testEnv: RulesTestEnvironment,
+  accountId: string,
+  input: {
+    budgetId: string;
+    ownerMembershipId: string;
+    label: string;
+    currency?: string;
+    accountType?: 'CHECKING' | 'SAVINGS' | 'CASH' | 'OTHER';
+  },
+): Promise<void> {
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(context.firestore(), `accounts/${accountId}`), {
+      budget_id: input.budgetId,
+      owner_membership_id: input.ownerMembershipId,
+      label: input.label,
+      institution_name: null,
+      currency: input.currency ?? 'CHF',
+      account_type: input.accountType ?? 'CHECKING',
+      created_at: Timestamp.fromDate(DEFAULT_JOINED),
+      archived_at: null,
+    });
+  });
+}

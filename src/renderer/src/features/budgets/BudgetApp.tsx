@@ -9,6 +9,7 @@ import type { AppServices, Session } from '../../backend/ports';
 import { BudgetDetail } from './BudgetDetail';
 import { describeError } from './errorMessages';
 import { useAction, type Notice, type Notify } from './useAction';
+import { StatementCsvPreview } from '../imports/StatementCsvPreview';
 
 export function BudgetApp({ services }: { services: AppServices }) {
   const { auth } = services;
@@ -175,6 +176,9 @@ function SignedIn({
               onLeft={() => setSelectedId(null)}
               onAccessLost={handleAccessLost}
             />
+          )}
+          {budgets !== null && (
+            <StatementCsvPreview services={services} budgets={budgets} />
           )}
           <PreferencesForm
             preferences={preferences}

@@ -7,11 +7,14 @@ import {
   INVITATION_LINK_PREFIX,
   isUuid,
   parseInvitationInput,
+  validateCreateAccountRequest,
+  validateCommitCsvImportRequest,
   validateBudgetName,
   validateCreateBudgetRequest,
   validateCreateInvitationRequest,
   validateEmailAddress,
   validatePreferencesRequest,
+  validateReadLocalStatementRequest,
 } from '../../src/shared/validators';
 
 const UUID = '3f2b8c1e-7a4d-4c55-9e0a-1b2c3d4e5f60';
@@ -38,6 +41,156 @@ describe('stage 1 request validators (U-FR-02, U-FR-03)', () => {
     ).toBeNull();
     expect(validateCreateBudgetRequest(null)).toBeNull();
     expect(validateCreateBudgetRequest({ name: '' })).toBeNull();
+  });
+
+  it('validates create account requests', () => {
+    expect(
+      validateCreateAccountRequest({
+        budget_id: UUID,
+        label: ' Main account ',
+        currency: 'CHF',
+        account_type: 'CHECKING',
+      }),
+    ).toEqual({
+      budget_id: UUID,
+      label: 'Main account',
+      currency: 'CHF',
+      account_type: 'CHECKING',
+    });
+
+    expect(
+      validateCreateAccountRequest({
+        budget_id: UUID,
+        label: 'Savings',
+        currency: 'PLN',
+        account_type: 'SAVINGS',
+        owner_membership_id: UUID,
+        institution_name: 'Bank AG',
+        account_id: UUID,
+      }),
+    ).toEqual({
+      budget_id: UUID,
+      label: 'Savings',
+      currency: 'PLN',
+      account_type: 'SAVINGS',
+      owner_membership_id: UUID,
+      institution_name: 'Bank AG',
+      account_id: UUID,
+    });
+    expect(
+      validateCreateAccountRequest({
+        budget_id: UUID,
+        label: '',
+        currency: 'CHF',
+        account_type: 'CHECKING',
+      }),
+    ).toBeNull();
+    expect(
+      validateCreateAccountRequest({
+        budget_id: UUID,
+        label: 'Main',
+        currency: 'chf',
+        account_type: 'CHECKING',
+      }),
+    ).toBeNull();
+    expect(
+      validateCreateAccountRequest({
+        budget_id: UUID,
+        label: 'Main',
+        currency: 'CHF',
+        account_type: 'CARD',
+      }),
+    ).toBeNull();
+  });
+
+  it('validates CSV import decisions and canonical transaction fields', () => {
+    const request = {
+      budget_id: UUID,
+      account_id: UUID,
+      file_sha256: 'a'.repeat(64),
+      parser_id: 'history-v1',
+      parser_version: '1.0.0',
+      rows: [
+        {
+          row_number: 2,
+          decision: 'include',
+          operation_date: '2026-03-01',
+          description: ' Synthetic purchase ',
+          amount: '12.3400',
+          currency: 'CHF',
+          transaction_type: 'EXPENSE',
+          fee: '0.3000',
+          balance: '987.6600',
+          balance_currency: 'CHF',
+        },
+        { row_number: 3, decision: 'exclude' },
+      ],
+    };
+    expect(validateCommitCsvImportRequest(request)).toEqual({
+      ...request,
+      rows: [
+        {
+          ...request.rows[0],
+          description: 'Synthetic purchase',
+        },
+        request.rows[1],
+      ],
+    });
+    expect(
+      validateCommitCsvImportRequest({
+        ...request,
+        rows: [{ ...request.rows[0], decision: 'pending' }],
+      }),
+    ).toBeNull();
+    expect(
+      validateCommitCsvImportRequest({
+        ...request,
+        rows: [{ ...request.rows[0], operation_date: '2026-02-30' }],
+      }),
+    ).toBeNull();
+    expect(
+      validateCommitCsvImportRequest({
+        ...request,
+        rows: [{ ...request.rows[0], amount: '12,34' }],
+      }),
+    ).toBeNull();
+    expect(
+      validateCommitCsvImportRequest({
+        ...request,
+        rows: [
+          {
+            ...request.rows[0],
+            balance_currency: undefined,
+          },
+        ],
+      }),
+    ).toBeNull();
+  });
+
+  it('validates local statement read requests', () => {
+    expect(
+      validateReadLocalStatementRequest({
+        filePath: 'C:\\temp\\statement.csv',
+      }),
+    ).toMatchObject({
+      filePath: 'C:\\temp\\statement.csv',
+    });
+    expect(
+      validateReadLocalStatementRequest({
+        filePath: ' C:\\temp\\statement.pdf ',
+        maxBytes: 4096,
+      }),
+    ).toEqual({
+      filePath: 'C:\\temp\\statement.pdf',
+      maxBytes: 4096,
+    });
+    expect(validateReadLocalStatementRequest({ filePath: '' })).toBeNull();
+    expect(
+      validateReadLocalStatementRequest({
+        filePath: 'C:\\temp\\statement.csv',
+        maxBytes: 100,
+      }),
+    ).toBeNull();
   });
 
   it('validates identifiers and e-mails', () => {

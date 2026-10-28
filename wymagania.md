@@ -4,15 +4,17 @@
 
 Aplikacja ma ułatwiać osobom prywatnym analizowanie wydatków i planowanie budżetu na podstawie wyciągów bankowych. Ma być instalowaną aplikacją desktopową dla macOS i Windows, z możliwie takim samym wyglądem i zachowaniem na obu systemach.
 
-Początkowy zakres obejmuje import wyciągów bankowych w formacie CSV i PDF, kategoryzowanie transakcji, analizę budżetu oraz współdzielenie budżetu z zaproszonymi osobami. Obsługa obu formatów jest wymagana w pierwszej wersji (MVP). Aplikacja nie ma łączyć się bezpośrednio z bankami.
+Pierwsze wdrożenie (MVP) obejmuje import plików z dostarczonych wyciągów: dwóch układów CSV (historia transakcji i konto oszczędnościowe) oraz tekstowego PDF, a także kategoryzowanie transakcji, analizę budżetu i współdzielenie budżetu. Te profile pochodzą z wyciągów Revolut. W następnej wersji planowane jest rozszerzenie importu CSV i PDF o kolejne banki, m.in. ERSTE, ING, Zürcher Kantonalbank (ZKB) i ABN AMRO. Aplikacja nie łączy się bezpośrednio z bankami.
 
-Zakres parserów MVP obejmuje wyciągi CSV i tekstowe PDF-y banków ERSTE, ING, Revolut, Zürcher Kantonalbank (ZKB) i ABN AMRO. Konkretne układy zostaną dopasowane podczas implementacji na podstawie przykładowych wyciągów; nie oznacza to gwarancji obsługi każdego wariantu pliku danego banku. Obsługa skanowanych PDF-ów przez lokalny OCR zostanie oceniona podczas implementacji na podstawie dostarczonych przykładów.
+Pierwszy etap obsługuje wyłącznie wymienione profile. Architektura profili powinna pozwalać dodawać kolejne formaty, ale nie wolno deklarować ani sugerować, że formaty kolejnych banków są już obsługiwane przed ich implementacją i przetestowaniem. Skanowane PDF-y i OCR są poza zakresem MVP; ich ewentualne dodanie wymaga osobnej decyzji.
 
 ## 2. Użytkownicy i pojęcia
 
 - **Użytkownik** — osoba logująca się do aplikacji kontem Google.
 - **Budżet** — przestrzeń zawierająca transakcje, kategorie i ustawienia; może należeć do jednej osoby lub być współdzielona.
 - **Członek budżetu** — użytkownik zaproszony do budżetu.
+- **Właściciel konta źródłowego** — członek budżetu, do którego przypisane są transakcje i saldo konta.
+- **Importujący** — zalogowany użytkownik wykonujący import; może być inną osobą niż właściciel konta źródłowego wyłącznie przy imporcie PDF „w imieniu” członka budżetu.
 - **Transakcja** — operacja zaimportowana z wyciągu albo dodana ręcznie.
 - **Wydatek/przychód** — transakcja zaklasyfikowana jako wydatek lub przychód.
 - **Przelew wewnętrzny** — przesunięcie pieniędzy, które nie powinno być liczone jako przychód ani wydatek budżetu.
@@ -33,16 +35,16 @@ Zakres parserów MVP obejmuje wyciągi CSV i tekstowe PDF-y banków ERSTE, ING, 
 
 ### 3.2. Import transakcji z CSV
 
-- **FR-10** Użytkownik może wybrać plik CSV z komputera i zaimportować zawarte w nim transakcje.
+- **FR-10** Użytkownik może wybrać lokalny plik CSV w obsługiwanym profilu i zaimportować zawarte w nim transakcje. Import CSV przypisuje konto i transakcje do zalogowanego użytkownika Google; nie wymaga ani nie umożliwia wskazania innego właściciela.
 - **FR-11** Import nie wysyła oryginalnego pliku wyciągu do usługi zewnętrznej. Do synchronizacji trafiają wyłącznie dane transakcji zatwierdzone do importu.
-- **FR-12** Przed zapisaniem aplikacja pokazuje podgląd rozpoznanych wierszy i pozwala użytkownikowi sprawdzić lub poprawić mapowanie kolumn, m.in. daty, opisu, kwoty i waluty.
-- **FR-13** Import obsługuje typowe warianty separatorów, kodowania, formatów dat i zapisu kwot; nierozpoznane lub błędne wiersze są wskazane do poprawy, a nie pomijane po cichu.
+- **FR-12** Przed zapisaniem aplikacja pokazuje podgląd wszystkich wierszy, rozpoznane pola oraz błędy. Użytkownik może sprawdzić lub poprawić separator, kodowanie, format daty, zapis kwoty i waluty oraz mapowanie kolumn, m.in. daty, opisu, kwoty, opłaty i waluty.
+- **FR-13** Parser CSV rozpoznaje separator i kodowanie pliku (z uwzględnieniem BOM), format daty, zapis kwot oraz walutę; użytkownik może poprawić te ustawienia w podglądzie. Wiersze błędne lub nierozpoznane pozostają widoczne w podglądzie i wymagają poprawy albo jawnej decyzji użytkownika o ich wyłączeniu; aplikacja nie pomija ich po cichu.
 - **FR-14** Aplikacja rozpoznaje ponownie importowany plik dla tego samego konta i nie importuje ponownie tych samych transakcji. Gdy format wyciągu nie zawiera unikalnego identyfikatora transakcji, aplikacja pokazuje możliwe duplikaty do potwierdzenia zamiast usuwać je automatycznie.
 - **FR-15** Użytkownik może anulować import przed zatwierdzeniem.
-- **FR-16** Aplikacja zawiera wbudowaną obsługę formatów CSV i automatycznie rozpoznaje zgodny układ pliku. Jeśli nie rozpozna formatu lub nie będzie w stanie poprawnie odczytać danych, informuje o tym i prosi użytkownika o pomoc, np. przez wskazanie kolumn zawierających datę, opis i kwotę.
-- **FR-17** Użytkownik może zaimportować wyciąg bankowy w formacie PDF już w pierwszej wersji aplikacji.
-- **FR-18** Aplikacja próbuje lokalnie wyodrębnić transakcje z PDF i pokazuje wynik do weryfikacji przed zapisaniem.
-- **FR-19** Import PDF nie może po cichu zapisywać niepewnie rozpoznanych kwot, dat ani opisów; niejednoznaczne dane wymagają poprawy lub potwierdzenia przez użytkownika.
+- **FR-16** Aplikacja zawiera dwa wbudowane profile CSV z pierwszego etapu i automatycznie rozpoznaje ich układ. Pierwszy profil mapuje historię transakcji z kolumnami `Rodzaj`, `Produkt`, `Data rozpoczęcia`, `Data zrealizowania`, `Opis`, `Kwota`, `Opłata`, `Waluta`, `State` i `Saldo`; obsługuje datę `YYYY-MM-DD HH:mm:ss`, kwoty dziesiętne z kropką oraz walutę z osobnej kolumny. Za datę operacji przyjmuje `Data zrealizowania`, jeśli jest dostępna, w przeciwnym razie `Data rozpoczęcia`; brak daty realizacji i status operacji zachowuje jako informację o operacji oczekującej. `Kwota` i `Opłata` są odrębnymi polami: opłaty nie wolno dodawać do kwoty transakcji ani pomijać. `Saldo` nie jest kwotą transakcji; jeśli jest zapisywane, stanowi saldo konta z datą operacji. Drugi profil mapuje wyciąg konta oszczędnościowego z kolumnami `Data`, `Opis`, `Wypłata pieniędzy`, `Wpływy` i `Saldo`; obsługuje polską datę `D MMM YYYY`, kwoty z przecinkiem dziesiętnym, spacją lub twardą spacją jako separatorem tysięcy oraz kod waluty dołączony do kwoty. Wiersz zawiera kwotę wypłaty albo wpływu; wypełnienie obu pól jest błędem do poprawy. Kwota jest transakcją, a `Saldo` jest zapisywane jako saldo konta z datą i walutą wiersza, nigdy jako dodatkowa transakcja.
+- **FR-17** W pierwszym etapie użytkownik może zaimportować lokalny, tekstowy PDF w obsługiwanym profilu. Obsługę formatów PDF kolejnych banków planuje się w następnej wersji; nie należy jej deklarować przed dodaniem i przetestowaniem odpowiednich profili. Nieznane układy PDF oraz skanowane PDF-y nie są obsługiwane w MVP; aplikacja jasno informuje o ograniczeniu i nie przedstawia nieudanego parsowania jako pustego, poprawnego importu.
+- **FR-18** Aplikacja lokalnie wyodrębnia transakcje z obsługiwanego PDF i pokazuje wynik do weryfikacji przed zapisaniem. Przy imporcie PDF do wspólnego budżetu importujący może wskazać aktywnego członka, w którego imieniu importuje; aplikacja zachowuje oddzielnie tożsamość zalogowanego importującego i właściciela konta.
+- **FR-19** Import PDF nie może po cichu zapisywać niepewnie rozpoznanych kwot, dat ani opisów. Błędne lub niejednoznaczne wiersze wymagają poprawy albo jawnej decyzji o ich wyłączeniu; nie są pomijane bez informacji.
 
 ### 3.3. Transakcje i kategorie
 
@@ -55,7 +57,7 @@ Zakres parserów MVP obejmuje wyciągi CSV i tekstowe PDF-y banków ERSTE, ING, 
 - **FR-26** Użytkownik może tworzyć, zmieniać nazwę i porządkować kategorie, np. jedzenie, transport, mieszkanie, zdrowie i elektronika.
 - **FR-27** Użytkownik może oznaczyć transakcję etykietą lub dodać notatkę.
 - **FR-28** Użytkownik może wyszukiwać, filtrować i sortować transakcje, m.in. po dacie, kwocie, kategorii, opisie i typie.
-- **FR-29** Aplikacja zachowuje powiązanie transakcji z kontem źródłowym i importem oraz — jeśli jest dostępny — identyfikator transakcji nadany przez bank.
+- **FR-29** Aplikacja zachowuje powiązanie transakcji z kontem źródłowym, jego właścicielem, importem oraz zalogowanym importującym, a także — jeśli jest dostępny — identyfikator transakcji nadany przez bank.
 
 ### 3.4. Dzielenie transakcji
 
@@ -73,7 +75,7 @@ Zakres parserów MVP obejmuje wyciągi CSV i tekstowe PDF-y banków ERSTE, ING, 
 
 ### 3.6. Rozpoznawanie przelewów
 
-- **FR-38** Użytkownik może dodać wiele kont źródłowych do budżetu, podając dla każdego nazwę lub etykietę, bank, walutę i właściciela będącego członkiem budżetu; dane logowania do banku nie są wymagane.
+- **FR-38** Użytkownik może dodać wiele kont źródłowych do budżetu, podając dla każdego nazwę lub etykietę, bank, walutę i właściciela będącego aktywnym członkiem budżetu; dane logowania do banku nie są wymagane. W CSV właścicielem jest zawsze zalogowane konto Google. Przy PDF importujący może wybrać aktywnego członka jako właściciela, ale zapis nie może podszywać się pod tę osobę: tożsamość importującego pozostaje zapisana oddzielnie.
 - **FR-39** Aplikacja pomaga wykryć transfer między kontami należącymi do tego samego lub różnych członków wspólnego budżetu jako parę powiązanych transakcji wychodzącej i przychodzącej, na podstawie m.in. kwoty, daty, opisu oraz kont źródłowych.
 - **FR-40** Użytkownik może potwierdzić, skorygować lub odrzucić sugestię rozpoznania przelewu. Jeśli wykryto tylko jedną stronę transferu, aplikacja ostrzega o braku drugiej transakcji i wymaga potwierdzenia przed uznaniem jej za transfer.
 - **FR-41** Potwierdzony przelew wewnętrzny jest pomijany w sumach przychodów i wydatków, aby nie zawyżał raportów.
@@ -139,7 +141,7 @@ Diagram SVG jest podglądem schematu. Po zmianie tabel lub relacji w DBML zaktua
 - **Członkostwo i usuwanie:** odejście lub usunięcie członka nie usuwa jego transakcji ani historii członkostwa. Usunięcie profilu anonimizuje `user_id` w historycznych członkostwach. Gdy administrator odchodzi, rolę otrzymuje najwcześniej dołączony pozostały członek; remis rozstrzyga `membership_id`. Usunięcie profilu ostatniego aktywnego członka usuwa budżet i jego dane aplikacji.
 - **Zaproszenia:** zaproszenie przechowuje skrót nieprzewidywalnego tokenu, a nie token w postaci jawnej. Można go użyć tylko raz, przed upływem 7 dni i przed anulowaniem. Akceptacja wymaga zalogowanego użytkownika.
 - **Kwoty i waluty:** kwoty przechowuj jako wartości dziesiętne, nie zmiennoprzecinkowe. Kwota źródłowa transakcji pozostaje niezmieniona. Data operacji jest typu `DATE`, pozostałe znaczniki czasu są w UTC, a waluty są kodami ISO 4217.
-- **Importy i pliki:** identyczny plik dla tego samego konta rozpoznaje jego hash. Fingerprint transakcji bez identyfikatora bankowego służy tylko do ostrzeżenia o możliwym duplikacie. Każdy rekord `import_periods` oznacza jeden ciągły zakres; luk nie łącz w jeden przedział. Oryginał i jego ścieżka pozostają lokalne. Ręczne usunięcie pliku nie usuwa importu, transakcji ani zakresów dat.
+- **Importy i pliki:** identyczny plik dla tego samego konta rozpoznaje jego hash. Fingerprint transakcji bez identyfikatora bankowego służy tylko do ostrzeżenia o możliwym duplikacie. Każdy rekord `import_periods` oznacza jeden ciągły zakres; luk nie łącz w jeden przedział. Zapis importu rozróżnia zalogowanego importującego i właściciela konta: dla CSV obie role przypadają zalogowanemu użytkownikowi Google, a dla PDF właścicielem może być wskazany aktywny członek budżetu. Oryginał i jego ścieżka pozostają lokalne. Ręczne usunięcie pliku nie usuwa importu, transakcji ani zakresów dat.
 - **Kategorie i podziały:** kategoria przypisana do rekordu musi należeć do tego samego budżetu. Kategorie użyte w historii są archiwizowane zamiast kasowane. Suma kwot pozycji podziału musi być dokładnie równa kwocie transakcji; w raportach i eksporcie licz pozycje podziału zamiast ponownie doliczać transakcję źródłową.
 - **Reguły kategorii:** reguły utworzone przez użytkownika mogą kategoryzować automatycznie. Reguły wyuczone są tylko podpowiedziami i wymagają potwierdzenia. Reguła nie nadpisuje kategorii ustawionej ręcznie.
 - **Transfery:** sugestia transferu nie zmienia raportów, dopóki użytkownik jej nie potwierdzi. Potwierdzona para zawiera dokładnie jedną transakcję wychodzącą i jedną przychodzącą z tego samego budżetu. Transfer jednostronny wymaga osobnego potwierdzenia po ostrzeżeniu. Potwierdzone transfery nie są przychodem ani wydatkiem; opłaty i różnice walutowe pozostają osobnymi wydatkami.
@@ -168,7 +170,7 @@ Diagram SVG jest podglądem schematu. Po zmianie tabel lub relacji w DBML zaktua
 - **TR-05** Dane są przesyłane przez szyfrowane połączenie sieciowe.
 - **TR-06** Usługa przechowująca dane egzekwuje uprawnienia dostępu do budżetu po stronie serwera; sama kontrola interfejsu aplikacji nie jest zabezpieczeniem.
 - **TR-07** Klucze i sekrety administracyjne usług zaplecza nie mogą być umieszczane w aplikacji klienckiej.
-- **TR-08** Importowanie i parsowanie plików CSV i PDF oraz uczenie podpowiedzi kategorii na podstawie korekt odbywa się lokalnie. Wyuczone podpowiedzi są synchronizowane jako reguły budżetu; opisy transakcji nie są wysyłane do zewnętrznych usług w celu kategoryzacji. Oryginalne pliki są przechowywane w lokalnym katalogu danych aplikacji; pliki ani ich zawartość nie są wysyłane do zewnętrznych usług ani synchronizowane między urządzeniami.
+- **TR-08** Importowanie i parsowanie obsługiwanych plików CSV i PDF oraz uczenie podpowiedzi kategorii na podstawie korekt odbywa się lokalnie. Wyuczone podpowiedzi są synchronizowane jako reguły budżetu; opisy transakcji nie są wysyłane do zewnętrznych usług w celu kategoryzacji. Oryginalne pliki są przechowywane w lokalnym katalogu danych aplikacji; pliki ani ich zawartość nie są wysyłane do zewnętrznych usług ani synchronizowane między urządzeniami.
 - **TR-09** Dane budżetu i członkostwa są przechowywane do czasu usunięcia budżetu lub konta; zakres pól oraz widoczność danych dla członków określa rozdział „Model danych i widoczność”.
 - **TR-10** Dane są chronione szyfrowaniem połączenia sieciowego oraz standardowym szyfrowaniem zapewnianym przez usługę chmurową; szyfrowanie end-to-end nie jest wymagane. Ukrycie transakcji jest funkcją prezentacji i uprawnień, a nie obietnicą tajemnicy przed osobą mającą dostęp do bazy lub kopii danych.
 - **TR-11** Błędy importu, synchronizacji i logowania są komunikowane użytkownikowi wprost; aplikacja nie może sugerować, że dane zapisano, jeśli zapis się nie powiódł.
@@ -176,7 +178,7 @@ Diagram SVG jest podglądem schematu. Po zmianie tabel lub relacji w DBML zaktua
 ### 5.3. Niezawodność, testowanie i dystrybucja
 
 - **TR-12** Operacje importu i synchronizacji powinny być odporne na ponowienie oraz nie tworzyć dodatkowych transakcji przy powtórzeniu tej samej operacji.
-- **TR-13** Należy testować parsery na przykładowych plikach CSV, w tym na błędnych danych, różnych formatach dat i kwot oraz różnych separatorach.
+- **TR-13** Należy testować wszystkie profile CSV i PDF objęte bieżącym etapem na zanonimizowanych fixture'ach. Testy CSV obejmują separator, kodowanie, nagłówki, format daty, separator dziesiętny i tysięcy, walutę, opłatę, saldo, status oczekujący, pusty plik oraz błędne i nierozpoznane wiersze. Błąd nie może prowadzić do cichego pominięcia wiersza.
 - **TR-14** Należy testować reguły dostępu do danych, zaproszenia i zachowanie wspólnych budżetów.
 - **TR-15** Wydania powinny być budowane i sprawdzane osobno dla macOS i Windows.
 - **TR-16** Aplikacja jest przeznaczona do użytku prywatnego i nie będzie publikowana w sklepach z aplikacjami. Należy przygotować możliwość instalacji na macOS i Windows oraz ustalić potrzebny sposób podpisywania i aktualizacji.
@@ -271,16 +273,16 @@ Poniższa tabela zawiera wstępne propozycje technologiczne, a nie wymagania wi�
 | Język aplikacji | TypeScript | Statyczne typowanie pomaga utrzymać czytelność i bezpieczeństwo zmian w rozbudowującym się projekcie. |
 | Logowanie | Firebase Authentication z Google | Proponowany dostawca logowania Google. Prototyp ma sprawdzić przepływ OAuth w zewnętrznej przeglądarce systemowej (nie w osadzonym oknie webview), zgodnie z zaleceniami Google dla aplikacji natywnych: PKCE, powrót do aplikacji przez przekierowanie na adres loopback lub własny schemat URI oraz wymianę uzyskanego poświadczenia Google na sesję Firebase. Trzeba też sprawdzić obsługę sesji (trwałość, odświeżanie, wylogowanie) i odbiór linków zaproszeniowych w aplikacji. Nie należy zakładać, że standardowy webowy przepływ popup/redirect Firebase zadziała w Electron bez zmian. |
 | Baza danych i synchronizacja | Cloud Firestore | Proponowana chmurowa baza do współdzielenia i synchronizacji budżetów; reguły dostępu muszą być egzekwowane po stronie usługi. W aplikacji Electron korzystającej z webowego SDK trzeba jawnie włączyć trwałą pamięć podręczną. Firestore synchronizuje zapisy offline po odzyskaniu połączenia; przy wielu zapisach offline do tego samego dokumentu stosuje zasadę „ostatni zapis wygrywa”, dlatego schemat powinien ograniczać konflikty i nadpisywanie niezależnych zmian. Transakcje Firestore wymagają połączenia z serwerem. Zakres cache i jego czyszczenie po wylogowaniu to otwarty punkt z rozdziału 9. Limity i koszty wymagają sprawdzenia. |
-| Import CSV i PDF | Lokalne biblioteki parsujące pliki | Wyciągi mają być przetwarzane lokalnie. Konkretne biblioteki należy wybrać po prototypie na plikach z obsługiwanych banków. |
+| Import CSV i PDF | Lokalne biblioteki parsujące pliki | Pliki wyciągów są przetwarzane lokalnie. W prototypie należy zweryfikować profile opisane w FR-16 i FR-17 na dostarczonych przykładach. Obsługa kolejnych banków jest planowana na następną wersję; skanowane PDF-y i OCR pozostają poza zakresem MVP. |
 | Źródło kursów walut | Frankfurter API v2, z jawnie wybranym dostawcą ECB | Bezpłatne API bez klucza, udostępniające dane historyczne. Domyślnie zwraca kursy łączone z wielu źródeł, dlatego aplikacja musi jawnie wybrać dostawcę ECB (kursy referencyjne Europejskiego Banku Centralnego). Zapytania dotyczą wyłącznie kodów walut i dat, nie danych transakcji. Używać kursu z najbliższego wcześniejszego dnia dostępnego w źródle, zapisywać faktyczną datę kursu i buforować pobrane kursy. Należy obsłużyć brak kursu dla wybranej daty lub waluty. |
-| OCR skanowanych PDF-ów | Lokalne narzędzie OCR — ocena podczas implementacji | OCR nie wysyła wyciągu na zewnątrz, ale może wymagać większego instalatora i ręcznej weryfikacji niepewnych pól. Potrzeba OCR w MVP zostanie oceniona na podstawie przykładowych wyciągów, zgodnie z ustaleniem w rozdziale 9. |
+| OCR skanowanych PDF-ów | Poza zakresem MVP | Import skanowanych PDF-ów i OCR można rozważyć w późniejszym zakresie; aplikacja informuje o braku obsługi skanu. |
 | Wykresy w interfejsie | Biblioteka do wykresów — do wyboru | Wybór dotyczy wyłącznie wyświetlania wykresów w interfejsie; nie musi obsługiwać eksportu do PDF. |
 | Eksport raportu PDF | Drukowanie widoku przez Electron albo osobna biblioteka PDF — do wyboru w prototypie | Sposób generowania PDF wybiera się niezależnie od biblioteki wykresów; musi umożliwiać umieszczenie wykresów w raporcie. |
 | Budowanie i dystrybucja | Narzędzie dla Electron — do wyboru | Wymaga przygotowania prywatnych instalatorów dla macOS i Windows; aplikacja nie będzie publikowana w sklepach. Prototyp powinien sprawdzić podpisywanie i notaryzację na macOS, podpisywanie na Windows oraz mechanizm aktualizacji (TR-16). |
 
 ## 8. Plan implementacji krok po kroku
 
-Plan prowadzi od prototypu do wydania aplikacji. Nie zmienia zakresu: **CSV i PDF należą do MVP**. Każdy etap kończy się działającym, sprawdzonym fragmentem aplikacji; nie przechodź dalej, jeśli kryteria ukończenia etapu nie są spełnione.
+Plan prowadzi od prototypu do wydania aplikacji. MVP implementuje profile opisane w FR-16 i FR-17; rozszerzenie obsługi o kolejne banki jest zaplanowane na następną wersję. Każdy etap kończy się działającym, sprawdzonym fragmentem aplikacji; nie przechodź dalej, jeśli kryteria ukończenia etapu nie są spełnione.
 
 ### Instrukcje dla AI realizującej projekt
 
@@ -345,20 +347,20 @@ Plan prowadzi od prototypu do wydania aplikacji. Nie zmienia zakresu: **CSV i PD
 - [U-FR-67, I-FR-67](./scenariusze-testow.md#fr-67); [U-FR-92, I-FR-92, E-FR-92](./scenariusze-testow.md#fr-92); [U-TR-08, I-TR-08](./scenariusze-testow.md#tr-08); [U-TR-11, I-TR-11, E-TR-11](./scenariusze-testow.md#tr-11); [U-TR-12, I-TR-12](./scenariusze-testow.md#tr-12)
 - [U-TR-13, I-TR-13](./scenariusze-testow.md#tr-13)
 
-1. Zaimplementuj konta budżetu z właścicielem będącym aktywnym członkiem. Nie zapisuj danych logowania do banku ani pełnego numeru rachunku.
+1. Zaimplementuj konta budżetu z właścicielem będącym aktywnym członkiem. CSV zawsze przypisuj do zalogowanego użytkownika Google; przy imporcie PDF pozwól wskazać aktywnego członka, w którego imieniu importuje zalogowana osoba. Zapisuj importującego odrębnie od właściciela. Nie zapisuj danych logowania do banku ani pełnego numeru rachunku.
 2. Zaimplementuj wybór pliku CSV/PDF, jego lokalny odczyt oraz podgląd bez wysyłania pliku ani jego zawartości do usługi zewnętrznej.
-3. Dla CSV obsłuż separator, kodowanie, format daty, kwotę i walutę. Dodaj wbudowane profile rozpoznawania obsługiwanych formatów, w tym ERSTE, ING, Revolut, ZKB i ABN AMRO; błąd lub nierozpoznany wiersz przedstaw do poprawy, nie pomijaj go po cichu.
-4. Dla PDF zaimplementuj lokalne wyodrębnianie tekstu i podgląd wyników. Kwoty, daty i opisy niepewne oznacz do weryfikacji. Na podstawie dostarczonych przykładów zapisz decyzję, czy do MVP dołączyć lokalny OCR skanów; OCR, jeśli zostanie wybrany, nie może wysyłać pliku na zewnątrz.
+3. Dla CSV zaimplementuj i przetestuj dwa profile opisane w FR-16: historię transakcji (separator przecinkowy, daty `YYYY-MM-DD HH:mm:ss`, kwoty z kropką dziesiętną, waluta w osobnej kolumnie) oraz konto oszczędnościowe (separator przecinkowy, polskie daty `D MMM YYYY`, kwoty z przecinkiem dziesiętnym i twardymi spacjami jako separatorami tysięcy, waluta przy kwocie). Obsłuż wykrywanie kodowania, nagłówków i mapowanie pól; błąd lub nierozpoznany wiersz przedstaw do poprawy albo jawnego wyłączenia, nigdy nie pomijaj go po cichu. Profile kolejnych banków zaplanuj do następnej wersji.
+4. Dla tekstowego PDF opisanego w FR-17 zaimplementuj lokalne wyodrębnianie tekstu i podgląd wyników. Kwoty, daty i opisy niepewne oznacz do weryfikacji; umożliw wybór właściciela „w imieniu” tylko spośród aktywnych członków danego budżetu, zachowując zalogowanego importującego. Profile PDF kolejnych banków zaplanuj do następnej wersji. Skanowany PDF i lokalny OCR są poza zakresem MVP; poinformuj użytkownika, jeśli pliku nie da się odczytać.
 5. Zaimplementuj edycję mapowania kolumn i zapis konfiguracji w `import_profiles`. Zmiana parsera powinna być wersjonowana; ponowny import powinien pokazywać użyty profil i wersję parsera.
 6. Zaimplementuj `import_batches` i `import_periods`. Obsłuż kilka nieciągłych zakresów jako osobne okresy; zapisuj tylko okres rzeczywiście rozpoznany z pliku lub transakcji.
 7. Przed zatwierdzeniem pozwól anulować import. Zatwierdzenie transakcji i wpisu importu wykonaj atomowo albo w kontrolowanym procesie z bezpiecznym ponowieniem.
 8. Rozpoznawaj identyczny plik po hashu dla tego samego konta. Identyfikator bankowy używaj do deduplikacji, jeśli istnieje; fingerprint bez takiego identyfikatora pokazuj jako możliwy duplikat do decyzji użytkownika.
 9. Zachowuj oryginał w lokalnym katalogu urządzenia i lokalne metadane `local_statement_files`. Usunięcie pliku oznacz w metadanych, ale zachowaj import, daty i transakcje. Nie synchronizuj ścieżki ani pliku źródłowego.
-10. Dodaj testy jednostkowe parserów, normalizacji, walidatorów pól, rozpoznawania duplikatów i wyznaczania zakresów dat. Testuj prawidłowe, błędne, niepełne, powtórzone i niejednoznaczne CSV/PDF, w tym ponowienie importu oraz brak sieci przy zatwierdzaniu.
+10. Dodaj testy jednostkowe obu profili CSV i parsera tekstowego PDF z bieżącego etapu, normalizacji, walidatorów pól, rozpoznawania duplikatów i wyznaczania zakresów dat. Testuj prawidłowe, błędne, niepełne, powtórzone i niejednoznaczne CSV/PDF, właściciela CSV i PDF, import „w imieniu”, ponowienie importu oraz brak sieci przy zatwierdzaniu.
 
-**Testy automatyczne:** dla każdego parsera banku dodaj testy jednostkowe na syntetycznych plikach obejmujące poprawny wariant, formaty dat/kwot, kodowanie, separator, błędny wiersz i pusty plik. Dodaj testy integracyjne lokalnego importu, odrzucenia/ponowienia zapisu, hashy i duplikatów; E2E podglądu, korekty, anulowania i zatwierdzenia CSV/PDF. Automatycznie sprawdź, że oryginalny plik i jego ścieżka nie są wysyłane ani synchronizowane; dla PDF używaj zatwierdzonych, pozbawionych danych osobowych fixture'ów.
+**Testy automatyczne:** dla każdego z dwóch profili CSV z bieżącego etapu dodaj syntetyczne lub zanonimizowane fixture'y obejmujące prawidłowe dane, formaty dat/kwot, kodowanie, separator, pusty plik, błędny wiersz i wiersz nierozpoznany. Dodaj testy integracyjne lokalnego importu, odrzucenia/ponowienia zapisu, hashy, duplikatów oraz przypisania właściciela/importującego; E2E podglądu, korekty, anulowania i zatwierdzenia CSV/PDF. Automatycznie sprawdź, że oryginalny plik i jego ścieżka nie są wysyłane ani synchronizowane; nie umieszczaj w testach rzeczywistych danych osobowych ani kwot z wyciągów.
 
-**Ukończ etap, gdy:** użytkownik może przejść od wyboru pliku do poprawienia podglądu i zatwierdzenia CSV oraz PDF; niepewne dane wymagają decyzji, błędy są jawne, duplikaty nie są bezgłośnie usuwane, a oryginał pozostaje lokalny.
+**Ukończ etap, gdy:** użytkownik może zaimportować profile CSV i tekstowy PDF zdefiniowane dla bieżącego etapu, poprawić podgląd i zatwierdzić import; CSV zawsze należy do zalogowanego użytkownika, PDF może być importowany „w imieniu” aktywnego członka, niepewne dane wymagają decyzji, błędy są jawne, duplikaty nie są bezgłośnie usuwane, a oryginał pozostaje lokalny.
 
 ### Etap 3 — transakcje, kategorie, reguły i wyszukiwanie
 
@@ -494,7 +496,7 @@ Plan prowadzi od prototypu do wydania aplikacji. Nie zmienia zakresu: **CSV i PD
 
 **Testy automatyczne:** uruchom pełny zestaw jednostkowy, integracyjny, UI/E2E, testy bezpieczeństwa i buildy na CI. Wygeneruj raport pokrycia wymagań z [scenariusze-testow.md](./scenariusze-testow.md), raport pokrycia kodu oraz listę testów manualnych dla OAuth na żywo, instalacji, podpisywania i interakcji z systemem operacyjnym.
 
-**Warunek wydania:** wszystkie obowiązkowe kryteria MVP, w tym import CSV i PDF, są spełnione i przetestowane; nie ma znanych błędów w dostępie do cudzych danych, utracie danych, podwójnym liczeniu ani cichym akceptowaniu niepewnego importu.
+**Warunek wydania:** wszystkie obowiązkowe profile CSV i tekstowego PDF zdefiniowane dla MVP są spełnione i przetestowane. Obsługa kolejnych banków jest zaplanowana na następną wersję, a skanowanych PDF-ów nie należy deklarować jako obsługiwanych. Nie ma znanych błędów w dostępie do cudzych danych, przypisaniu właściciela/importującego, utracie danych, podwójnym liczeniu ani cichym akceptowaniu niepewnego importu.
 
 ## 9. Otwarte punkty i decyzje architektoniczne
 
@@ -502,5 +504,5 @@ Poniższe wybory nie zmieniają wymagań funkcjonalnych. AI realizująca projekt
 
 - **Lokalny cache danych budżetu (Firestore, TR-03, TR-06).** Ustal zakres cache i sposób jego czyszczenia przy wylogowaniu, zmianie konta oraz odebraniu członkostwa. Poinformuj użytkownika, że danych pobranych offline nie da się zdalnie wycofać; cache nie może być traktowany jako dowód aktualnych uprawnień ani potwierdzenia zapisu.
 - **Podpisywanie i aktualizacje instalatorów (TR-01, TR-15, TR-16).** Ustal podpisywanie i notaryzację na macOS, podpisywanie na Windows (w tym ostrzeżenia SmartScreen) oraz sposób aktualizacji. Zweryfikuj decyzję na prototypie i przed wydaniem.
-- **OCR skanowanych PDF-ów (FR-17–FR-19, TR-08).** Oceń przykładowe pliki. Zdecyduj, czy MVP obejmuje lokalny OCR; jeśli tak, wybierz bibliotekę, sprawdź rozmiar instalatora i wymagaj potwierdzenia niepewnych pól. Jeśli nie, aplikacja musi jasno poinformować o ograniczeniu skanowanych PDF-ów.
+- **OCR skanowanych PDF-ów (FR-17–FR-19, TR-08).** OCR i obsługa skanowanych PDF-ów są poza zakresem MVP. Ich ewentualne dodanie wymaga osobnej decyzji zakresowej, wyboru lokalnej biblioteki, oceny rozmiaru instalatora i zachowania obowiązku ręcznej weryfikacji niepewnych pól.
 - **Koszt usług serwerowych (TR-20, TR-21).** Przed wdrożeniem backendu wybierz plan, region i sposób monitorowania kosztów. Jeżeli operacje wymagają zaufanych funkcji serwerowych, uwzględnij wymagany plan rozliczeniowy i alerty; alert nie jest twardym limitem wydatków.

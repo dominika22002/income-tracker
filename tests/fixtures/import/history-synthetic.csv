@@ -1,0 +1,4 @@
+Rodzaj,Produkt,Data rozpoczęcia,Data zrealizowania,Opis,Kwota,Opłata,Waluta,State,Saldo
+Płatność kartą,Konto testowe,2026-03-01 09:00:00,2026-03-01 09:01:00,"Sklep testowy, artykuły",12.34,0.30,CHF,Completed,987.66
+Przelew przychodzący,Konto testowe,2026-03-02 10:00:00,,Testowy transfer,8.00,0.00,CHF,Pending,995.66
+Płatność kartą,Konto testowe,not-a-date,not-a-date,Wiersz błędny,abc,0.00,CHF,Completed,995.66

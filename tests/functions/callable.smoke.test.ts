@@ -71,6 +71,39 @@ describe('callable functions on the emulators (I-FR-01, I-FR-02, I-FR-04)', () =
     const budget = created.result as { budget_id: string };
     expect(budget.budget_id).toMatch(/^[0-9a-f-]{36}$/);
 
+    const account = await call('createAccount', alice.idToken, {
+      budget_id: budget.budget_id,
+      label: 'Main account',
+      currency: 'CHF',
+      account_type: 'CHECKING',
+    });
+    const accountId = (account.result as { account_id: string }).account_id;
+    expect(accountId).toMatch(/^[0-9a-f-]{36}$/);
+
+    const imported = await call('commitCsvImport', alice.idToken, {
+      budget_id: budget.budget_id,
+      account_id: accountId,
+      file_sha256: 'a'.repeat(64),
+      parser_id: 'history-v1',
+      parser_version: '1.0.0',
+      rows: [
+        {
+          row_number: 2,
+          decision: 'include',
+          operation_date: '2026-03-01',
+          description: 'Synthetic callable import',
+          amount: '1.25',
+          currency: 'CHF',
+          transaction_type: 'EXPENSE',
+          bank_transaction_id: 'synthetic-bank-row',
+        },
+      ],
+    });
+    expect(imported.result).toMatchObject({
+      imported_row_count: 1,
+      already_imported: false,
+    });
+
     const invitation = await call('createInvitation', alice.idToken, {
       budget_id: budget.budget_id,
     });

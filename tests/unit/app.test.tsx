@@ -8,6 +8,7 @@ function mockApi(): IpcApi {
   return {
     ping: vi.fn().mockResolvedValue({ ok: true, message: 'ok' }),
     selectLocalFile: vi.fn().mockResolvedValue({ canceled: true }),
+    readLocalStatement: vi.fn().mockResolvedValue({ success: false }),
     writeTestFile: vi
       .fn()
       .mockResolvedValue({ success: true, filePath: '/tmp/test.txt' }),

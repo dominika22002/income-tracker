@@ -4,6 +4,7 @@ export const COLLECTIONS = {
   userPreferences: 'user_preferences',
   budgets: 'budgets',
   memberships: 'memberships',
+  accounts: 'accounts',
   invitations: 'invitations',
   invitationTokens: 'invitation_tokens',
   budgetPurgeQueue: 'budget_purge_queue',

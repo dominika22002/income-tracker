@@ -8,6 +8,8 @@ import {
   previewInvitation,
 } from './invitations';
 import { createBudget } from './budgets';
+import { createAccount } from './accounts';
+import { commitCsvImport } from './imports';
 import type { Caller } from './context';
 import { leaveBudget, removeMember } from './memberships';
 import { ensureUserProfile, updatePreferences } from './profile';
@@ -35,6 +37,8 @@ export const CALLABLE_NAMES = [
   'ensureUserProfile',
   'updatePreferences',
   'createBudget',
+  'createAccount',
+  'commitCsvImport',
   'createInvitation',
   'previewInvitation',
   'acceptInvitation',
@@ -66,6 +70,10 @@ export function createHandlers(
       updatePreferences(deps, callerFromAuth(auth), data),
     createBudget: (auth, data) =>
       createBudget(deps, callerFromAuth(auth), data),
+    createAccount: (auth, data) =>
+      createAccount(deps, callerFromAuth(auth), data),
+    commitCsvImport: (auth, data) =>
+      commitCsvImport(deps, callerFromAuth(auth), data),
     createInvitation: (auth, data) =>
       createInvitation(deps, callerFromAuth(auth), data),
     previewInvitation: (auth, data) =>
@@ -121,6 +129,7 @@ const CODE_MAP: Record<DomainErrorCode, CallableErrorCode> = {
   INVITATION_NOT_PENDING: 'failed-precondition',
   INVITATION_EXPIRED: 'failed-precondition',
   BUDGET_HAS_ACTIVE_MEMBERS: 'failed-precondition',
+  DUPLICATE_REVIEW_REQUIRED: 'failed-precondition',
 };
 
 /** Domain errors keep their code; anything else is reported as opaque. */
@@ -146,6 +155,8 @@ export function createLocalBackend(
     ensureUserProfile: () => call('ensureUserProfile'),
     updatePreferences: (request) => call('updatePreferences', request),
     createBudget: (request) => call('createBudget', request),
+    createAccount: (request) => call('createAccount', request),
+    commitCsvImport: (request) => call('commitCsvImport', request),
     createInvitation: (request) => call('createInvitation', request),
     previewInvitation: (token) => call('previewInvitation', { token }),
     acceptInvitation: (token) => call('acceptInvitation', { token }),

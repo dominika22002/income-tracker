@@ -9,6 +9,7 @@ import {
   type Timestamp,
 } from 'firebase/firestore';
 import type {
+  AccountView,
   InvitationView,
   MemberView,
   MyBudgetView,
@@ -67,6 +68,37 @@ export function createFirestoreDataSource(db: Firestore): BudgetDataSource {
         active = false;
         unsubscribe();
       };
+    },
+
+    subscribeAccounts(budgetId, ownerMembershipId, onData, onError) {
+      return onSnapshot(
+        query(
+          collection(db, 'accounts'),
+          where('budget_id', '==', budgetId),
+        ),
+        (snapshot) => {
+          const accounts: AccountView[] = snapshot.docs
+            .filter(
+              (account) =>
+                account.get('owner_membership_id') === ownerMembershipId &&
+                account.get('archived_at') == null,
+            )
+            .map((account) => ({
+              account_id: account.id,
+              budget_id: account.get('budget_id') as string,
+              owner_membership_id: account.get(
+                'owner_membership_id',
+              ) as string,
+              label: account.get('label') as string,
+              currency: account.get('currency') as string,
+              account_type: account.get('account_type') as AccountView['account_type'],
+              archived_at: null,
+            }))
+            .sort((a, b) => a.label.localeCompare(b.label));
+          onData(accounts);
+        },
+        onError,
+      );
     },
 
     subscribeMembers(budgetId, onData, onError) {

@@ -19,7 +19,7 @@ import {
   where,
 } from 'firebase/firestore';
 import { afterAll, beforeAll, beforeEach, describe, it } from 'vitest';
-import { seedBudget, seedEndedMembership } from './helpers';
+import { seedAccount, seedBudget, seedEndedMembership } from './helpers';
 
 const PROJECT_ID = 'demo-income-tracker';
 
@@ -62,6 +62,37 @@ describe('Firestore rules: budget access', () => {
       'left-1',
       'LEFT',
     );
+    await seedAccount(testEnv, 'acc-a-1', {
+      budgetId: 'budget-a',
+      ownerMembershipId: 'm-owner-1',
+      label: 'Family main',
+    });
+    await seedAccount(testEnv, 'acc-b-1', {
+      budgetId: 'budget-b',
+      ownerMembershipId: 'm-other-owner',
+      label: 'Other main',
+    });
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const db = context.firestore();
+      await setDoc(doc(db, 'import_batches/batch-a-1'), {
+        budget_id: 'budget-a',
+        account_id: 'acc-a-1',
+        status: 'IMPORTED',
+      });
+      await setDoc(doc(db, 'import_periods/period-a-1'), {
+        budget_id: 'budget-a',
+        import_batch_id: 'batch-a-1',
+      });
+      await setDoc(doc(db, 'transactions/transaction-a-1'), {
+        budget_id: 'budget-a',
+        account_id: 'acc-a-1',
+        amount: '1.00',
+      });
+      await setDoc(doc(db, 'account_balance_snapshots/snapshot-a-1'), {
+        account_id: 'acc-a-1',
+        balance_amount: '10.00',
+      });
+    });
   });
 
   afterAll(async () => {
@@ -125,6 +156,25 @@ describe('Firestore rules: budget access', () => {
           collection(asUser('outsider-1'), 'budgets/budget-a/active_members'),
         ),
       );
+    });
+
+    it('lets active members read accounts of their budget only', async () => {
+      await assertSucceeds(getDoc(doc(asUser('owner-1'), 'accounts/acc-a-1')));
+      await assertSucceeds(getDoc(doc(asUser('member-1'), 'accounts/acc-a-1')));
+      await assertFails(getDoc(doc(asUser('member-1'), 'accounts/acc-b-1')));
+      await assertFails(getDoc(doc(asUser('outsider-1'), 'accounts/acc-a-1')));
+    });
+
+    it('lets active members read import records and transactions of their budget', async () => {
+      for (const path of [
+        'import_batches/batch-a-1',
+        'import_periods/period-a-1',
+        'transactions/transaction-a-1',
+        'account_balance_snapshots/snapshot-a-1',
+      ]) {
+        await assertSucceeds(getDoc(doc(asUser('member-1'), path)));
+        await assertFails(getDoc(doc(asUser('other-owner'), path)));
+      }
     });
   });
 
@@ -244,6 +294,22 @@ describe('Firestore rules: budget access', () => {
             role: 'ADMIN',
           },
         ),
+      );
+      await assertFails(
+        setDoc(doc(db, 'accounts/self-made'), {
+          budget_id: 'budget-a',
+          owner_membership_id: 'm-owner-1',
+          label: 'Hacked',
+          currency: 'CHF',
+          account_type: 'CHECKING',
+        }),
+      );
+      await assertFails(updateDoc(doc(db, 'accounts/acc-a-1'), { label: 'x' }));
+      await assertFails(
+        setDoc(doc(db, 'import_batches/forged'), { budget_id: 'budget-a' }),
+      );
+      await assertFails(
+        setDoc(doc(db, 'transactions/forged'), { budget_id: 'budget-a' }),
       );
     });
 

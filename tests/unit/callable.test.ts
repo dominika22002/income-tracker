@@ -26,6 +26,7 @@ const ALL_CODES: DomainErrorCode[] = [
   'INVITATION_EXPIRED',
   'INVITATION_EMAIL_MISMATCH',
   'BUDGET_HAS_ACTIVE_MEMBERS',
+  'DUPLICATE_REVIEW_REQUIRED',
 ];
 
 describe('callable layer (U-FR-01, U-TR-06)', () => {

@@ -5,6 +5,9 @@ export interface IpcApi {
     filePath?: string;
     error?: string;
   }>;
+  readLocalStatement(
+    request: ReadLocalStatementRequest,
+  ): Promise<ReadLocalStatementResult>;
   writeTestFile(content: string): Promise<{
     success: boolean;
     filePath?: string;
@@ -31,6 +34,23 @@ export interface WriteTestFileRequest {
   content: string;
 }
 
+export interface ReadLocalStatementRequest {
+  filePath: string;
+  maxBytes?: number;
+}
+
+export interface ReadLocalStatementResult {
+  success: boolean;
+  filePath?: string;
+  fileName?: string;
+  extension?: string;
+  mimeType?: string;
+  fileSizeBytes?: number;
+  fileSha256?: string;
+  contentBase64?: string;
+  error?: string;
+}
+
 // ---------------------------------------------------------------------------
 // Stage 1: budget access model (see docs/etap-1-mapowanie.md)
 // ---------------------------------------------------------------------------
@@ -39,6 +59,7 @@ export type MembershipRole = 'ADMIN' | 'MEMBER';
 export type MembershipStatus = 'ACTIVE' | 'LEFT' | 'REMOVED';
 export type InvitationStatus =
   'PENDING' | 'ACCEPTED' | 'DECLINED' | 'EXPIRED' | 'CANCELLED';
+export type AccountType = 'CHECKING' | 'SAVINGS' | 'CASH' | 'OTHER';
 
 export interface UserRecord {
   user_id: string;
@@ -81,6 +102,28 @@ export interface InvitationRecord {
   expires_at: Date;
 }
 
+export interface AccountRecord {
+  account_id: string;
+  budget_id: string;
+  owner_membership_id: string;
+  label: string;
+  institution_name: string | null;
+  currency: string;
+  account_type: AccountType;
+  created_at: Date;
+  archived_at: Date | null;
+}
+
+export interface AccountView {
+  account_id: string;
+  budget_id: string;
+  owner_membership_id: string;
+  label: string;
+  currency: string;
+  account_type: AccountType;
+  archived_at: string | null;
+}
+
 export type DomainErrorCode =
   | 'UNAUTHENTICATED'
   | 'INVALID_ARGUMENT'
@@ -95,7 +138,8 @@ export type DomainErrorCode =
   | 'INVITATION_NOT_PENDING'
   | 'INVITATION_EXPIRED'
   | 'INVITATION_EMAIL_MISMATCH'
-  | 'BUDGET_HAS_ACTIVE_MEMBERS';
+  | 'BUDGET_HAS_ACTIVE_MEMBERS'
+  | 'DUPLICATE_REVIEW_REQUIRED';
 
 export interface CreateBudgetRequest {
   name: string;
@@ -139,6 +183,62 @@ export interface RemoveMemberRequest {
   membership_id: string;
 }
 
+export interface CreateAccountRequest {
+  budget_id: string;
+  label: string;
+  currency: string;
+  account_type: AccountType;
+  owner_membership_id?: string;
+  institution_name?: string;
+  account_id?: string;
+}
+
+export interface CreateAccountResult {
+  account_id: string;
+}
+
+export type StatementImportFormat = 'CSV' | 'PDF';
+export type StatementImportRowDecision = 'include' | 'exclude' | 'pending';
+export type StatementTransactionType = 'EXPENSE' | 'INCOME' | 'TRANSFER';
+
+export interface StatementImportRowRequest {
+  row_number: number;
+  decision: StatementImportRowDecision;
+  operation_date?: string;
+  description?: string;
+  amount?: string;
+  currency?: string;
+  transaction_type?: StatementTransactionType;
+  fee?: string | null;
+  bank_transaction_id?: string | null;
+  source_status?: string | null;
+  balance?: string | null;
+  balance_currency?: string | null;
+  possible_duplicate_decision?: 'confirm' | 'exclude' | 'pending';
+}
+
+export interface CommitCsvImportRequest {
+  budget_id: string;
+  account_id: string;
+  file_sha256: string;
+  parser_id: string;
+  parser_version: string;
+  rows: StatementImportRowRequest[];
+}
+
+export interface ImportPeriodView {
+  period_start: string;
+  period_end: string;
+}
+
+export interface CommitCsvImportResult {
+  import_batch_id: string;
+  imported_row_count: number;
+  skipped_duplicate_row_numbers: number[];
+  periods: ImportPeriodView[];
+  already_imported: boolean;
+}
+
 export interface DeleteProfileResult {
   deleted_budget_ids: string[];
   cleanup_pending_budget_ids: string[];
@@ -151,6 +251,10 @@ export interface BudgetBackend {
     request: UpdatePreferencesRequest,
   ): Promise<UserPreferencesRecord>;
   createBudget(request: CreateBudgetRequest): Promise<CreateBudgetResult>;
+  createAccount(request: CreateAccountRequest): Promise<CreateAccountResult>;
+  commitCsvImport(
+    request: CommitCsvImportRequest,
+  ): Promise<CommitCsvImportResult>;
   createInvitation(
     request: CreateInvitationRequest,
   ): Promise<CreateInvitationResult>;

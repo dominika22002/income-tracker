@@ -4,6 +4,8 @@ import type { IpcApi, OAuthCallbackPayload } from '../shared/contracts';
 const api: IpcApi = {
   ping: () => ipcRenderer.invoke('app:ping'),
   selectLocalFile: () => ipcRenderer.invoke('file:select'),
+  readLocalStatement: (request) =>
+    ipcRenderer.invoke('file:readStatement', request),
   writeTestFile: (content) => ipcRenderer.invoke('file:writeTest', { content }),
   startGoogleOAuth: () => ipcRenderer.invoke('oauth:start'),
   onOAuthCallback: (listener) => {

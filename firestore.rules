@@ -56,6 +56,45 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    match /accounts/{accountId} {
+      allow read: if isActiveMember(resource.data.budget_id);
+      allow write: if false;
+    }
+
+    match /import_batches/{importBatchId} {
+      allow read: if isActiveMember(resource.data.budget_id);
+      allow write: if false;
+    }
+
+    match /import_periods/{importPeriodId} {
+      allow read: if isActiveMember(resource.data.budget_id);
+      allow write: if false;
+    }
+
+    match /transactions/{transactionId} {
+      allow read: if isActiveMember(resource.data.budget_id);
+      allow write: if false;
+    }
+
+    match /account_balance_snapshots/{snapshotId} {
+      allow read: if signedIn()
+        && exists(/databases/$(database)/documents/accounts/$(resource.data.account_id))
+        && isActiveMember(get(/databases/$(database)/documents/accounts/$(resource.data.account_id)).data.budget_id);
+      allow write: if false;
+    }
+
+    match /import_batch_file_hashes/{hashId} {
+      allow read, write: if false;
+    }
+
+    match /statement_bank_transaction_keys/{keyId} {
+      allow read, write: if false;
+    }
+
+    match /statement_fingerprint_keys/{keyId} {
+      allow read, write: if false;
+    }
+
     // Invitation e-mails are stored lower-case by the server.
     match /invitations/{invitationId} {
       allow read: if isActiveAdmin(resource.data.budget_id)

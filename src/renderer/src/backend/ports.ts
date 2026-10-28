@@ -1,4 +1,5 @@
 import type {
+  AccountView,
   BudgetBackend,
   InvitationView,
   MemberView,
@@ -31,6 +32,12 @@ export interface BudgetDataSource {
   subscribeMyBudgets(
     uid: string,
     onData: (budgets: MyBudgetView[]) => void,
+    onError: ErrorListener,
+  ): Unsubscribe;
+  subscribeAccounts(
+    budgetId: string,
+    ownerMembershipId: string,
+    onData: (accounts: AccountView[]) => void,
     onError: ErrorListener,
   ): Unsubscribe;
   subscribeMembers(

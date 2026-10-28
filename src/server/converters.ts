@@ -4,6 +4,7 @@ import {
   type DocumentSnapshot,
 } from 'firebase-admin/firestore';
 import type {
+  AccountRecord,
   BudgetRecord,
   InvitationRecord,
   MembershipRecord,
@@ -176,5 +177,35 @@ export function invitationFromSnapshot(
     status: value.status,
     created_at: toDate(value.created_at),
     expires_at: toDate(value.expires_at),
+  };
+}
+
+export function accountToData(
+  account: Omit<AccountRecord, 'account_id'>,
+): DocumentData {
+  return {
+    budget_id: account.budget_id,
+    owner_membership_id: account.owner_membership_id,
+    label: account.label,
+    institution_name: account.institution_name,
+    currency: account.currency,
+    account_type: account.account_type,
+    created_at: toTimestamp(account.created_at),
+    archived_at: account.archived_at ? toTimestamp(account.archived_at) : null,
+  };
+}
+
+export function accountFromSnapshot(snapshot: DocumentSnapshot): AccountRecord {
+  const value = data(snapshot);
+  return {
+    account_id: snapshot.id,
+    budget_id: value.budget_id,
+    owner_membership_id: value.owner_membership_id,
+    label: value.label,
+    institution_name: value.institution_name ?? null,
+    currency: value.currency,
+    account_type: value.account_type,
+    created_at: toDate(value.created_at),
+    archived_at: toDateOrNull(value.archived_at),
   };
 }

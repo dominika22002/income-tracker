@@ -18,6 +18,8 @@ const MESSAGES: Record<DomainErrorCode, string> = {
   INVITATION_EMAIL_MISMATCH:
     'This invitation is for a different, or unverified, e-mail address.',
   BUDGET_HAS_ACTIVE_MEMBERS: 'The budget still has active members.',
+  DUPLICATE_REVIEW_REQUIRED:
+    'Possible duplicate transactions need an explicit include or exclude decision.',
 };
 
 /** Never reports success: unknown failures are shown as failures. */
