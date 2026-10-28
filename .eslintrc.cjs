@@ -37,6 +37,37 @@ module.exports = {
         node: true,
       },
     },
+    {
+      // TR-07: administrative SDKs and server code never ship in the client.
+      files: [
+        'src/renderer/**/*.{ts,tsx}',
+        'src/main/**/*.ts',
+        'src/preload/**/*.ts',
+        'src/shared/**/*.ts',
+      ],
+      rules: {
+        'no-restricted-imports': [
+          'error',
+          {
+            patterns: [
+              'firebase-admin',
+              'firebase-admin/*',
+              'firebase-functions',
+              'firebase-functions/*',
+              '**/server/*',
+            ],
+          },
+        ],
+      },
+    },
   ],
-  ignorePatterns: ['dist', 'dist-electron', 'out', 'node_modules', 'coverage'],
+  ignorePatterns: [
+    'dist',
+    'dist-electron',
+    'out',
+    'node_modules',
+    'coverage',
+    'functions/lib',
+    'functions/node_modules',
+  ],
 };

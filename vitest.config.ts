@@ -25,6 +25,31 @@ export default defineConfig({
           environment: 'node',
         },
       },
+      {
+        test: {
+          name: 'e2e',
+          include: ['tests/e2e/**/*.test.tsx'],
+          environment: 'jsdom',
+          setupFiles: ['tests/setup/unit.setup.ts'],
+          testTimeout: 30_000,
+        },
+      },
+      {
+        test: {
+          name: 'functions',
+          include: ['tests/functions/**/*.test.ts'],
+          environment: 'node',
+          testTimeout: 30_000,
+        },
+      },
+      {
+        test: {
+          name: 'integration',
+          include: ['tests/integration/**/*.test.ts'],
+          environment: 'node',
+          testTimeout: 20_000,
+        },
+      },
     ],
     coverage: {
       provider: 'v8',

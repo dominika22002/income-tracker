@@ -5,36 +5,68 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function membershipDocId(budgetId) {
-      return budgetId + "_" + request.auth.uid;
+    function activeMemberPath(budgetId) {
+      return /databases/$(database)/documents/budgets/$(budgetId)/active_members/$(request.auth.uid);
     }
 
+    // `active_members/{uid}` exists exactly while the user has an ACTIVE
+    // membership; the server creates/deletes it in the same transaction as the
+    // membership document.
     function isActiveMember(budgetId) {
-      return signedIn()
-        && exists(
-          /databases/$(database)/documents/memberships/$(membershipDocId(budgetId))
-        )
-        && get(
-          /databases/$(database)/documents/memberships/$(membershipDocId(budgetId))
-        ).data.status == "active";
+      return signedIn() && exists(activeMemberPath(budgetId));
     }
 
+    function isActiveAdmin(budgetId) {
+      return isActiveMember(budgetId)
+        && get(activeMemberPath(budgetId)).data.role == 'ADMIN';
+    }
+
+    function hasVerifiedEmail() {
+      return signedIn()
+        && request.auth.token.email_verified == true
+        && request.auth.token.email != null;
+    }
+
+    // All writes to identity, budget, membership and invitation data go
+    // through trusted server code (Admin SDK); clients are read-only here.
     match /users/{userId} {
-      allow read, write: if signedIn() && request.auth.uid == userId;
+      allow read: if signedIn() && request.auth.uid == userId;
+      allow write: if false;
+    }
+
+    match /user_preferences/{userId} {
+      allow read: if signedIn() && request.auth.uid == userId;
+      allow write: if false;
     }
 
     match /budgets/{budgetId} {
-      allow read, write: if isActiveMember(budgetId);
-    }
+      allow read: if isActiveMember(budgetId);
+      allow write: if false;
 
-    match /budget_records/{budgetId}/items/{itemId} {
-      allow read, write: if isActiveMember(budgetId);
+      match /active_members/{memberUserId} {
+        allow read: if isActiveMember(budgetId);
+        allow write: if false;
+      }
     }
 
     match /memberships/{membershipId} {
-      allow read: if signedIn() && resource.data.user_id == request.auth.uid;
+      allow read: if signedIn()
+        && (resource.data.user_id == request.auth.uid
+          || isActiveMember(resource.data.budget_id));
       allow write: if false;
+    }
+
+    // Invitation e-mails are stored lower-case by the server.
+    match /invitations/{invitationId} {
+      allow read: if isActiveAdmin(resource.data.budget_id)
+        || (hasVerifiedEmail()
+          && resource.data.invitee_email == request.auth.token.email.lower());
+      allow write: if false;
+    }
+
+    // Placeholder for budget-scoped data until Stage 2+ (Stage 0 access prototype).
+    match /budget_records/{budgetId}/items/{itemId} {
+      allow read, write: if isActiveMember(budgetId);
     }
   }
 }
-

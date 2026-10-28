@@ -13,6 +13,8 @@
     "src/main/**/*.ts",
     "src/preload/**/*.ts",
     "src/shared/**/*.ts",
+    "src/server/**/*.ts",
+    "functions/src/**/*.ts",
     "tests/**/*.ts"
   ]
 }

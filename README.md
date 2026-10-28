@@ -33,7 +33,7 @@ This repository contains Stage 0 implementation for a desktop prototype based on
    - callback parsing and state validation,
    - user-visible error/success messages.
 
-3. **Firestore rules aligned to DBML intent (minimal Stage 0 subset)**  
+3. **Firestore rules aligned to DBML intent (Stage 0 subset, extended in Stage 1)**  
    DBML is the source of truth. Stage 0 uses a reduced subset for access-rule verification:
    - `users`
    - `budgets`
@@ -41,6 +41,22 @@ This repository contains Stage 0 implementation for a desktop prototype based on
    - `budget_records` (test-protected budget data)
 
    The full budget model from `wymagania.dbml` is intentionally deferred to Stage 1+.
+
+## Stage 1: budget data model and access
+
+Details and design decisions: [docs/etap-1-mapowanie.md](./docs/etap-1-mapowanie.md) (DBML → Firestore mapping, indexes, rules, transactions).
+
+- **Trusted server logic** lives in `src/server/` and is exposed as callable Cloud Functions by `functions/` (bundled with `npm run build:functions`). It uses the Admin SDK only on the server side; the client never contains admin credentials (checked by `tests/unit/clientSecrets.test.ts` and an ESLint rule).
+- **Firestore rules** (`firestore.rules`) make identity, budget, membership and invitation data read-only for clients. Access to budget data requires an existing `budgets/{id}/active_members/{uid}` document, which the server creates and deletes in the same transaction as the membership.
+- **Domain rules** (status transitions, 7-day invitations, deterministic admin succession) are plain functions in `src/shared/domain/` with unit tests.
+- **UI** (`src/renderer/src/features/budgets/`) talks to the server only through the `BudgetBackend` interface and reads data with Firestore listeners that are subject to the rules.
+- Cloud Functions need the Blaze plan when deployed (see `wymagania.md` §9); the region is not chosen yet (functions default to `us-central1`). Emulators need no billing.
+
+```bash
+npm run test:rules      # rules + service integration tests (Firestore emulator, needs Java)
+npm run test:e2e        # UI flows against the emulator (needs Java)
+npm run test:functions  # callable functions on Auth/Firestore/Functions emulators (needs Java)
+```
 
 ## Prerequisites
 
@@ -52,6 +68,7 @@ This repository contains Stage 0 implementation for a desktop prototype based on
 
 ```bash
 npm install
+npm install --prefix functions
 cp .env.example .env.local
 ```
 
@@ -87,6 +104,8 @@ npm run test:rules
 npm run test:unit
 npm run test
 npm run test:rules
+npm run test:e2e
+npm run test:functions
 ```
 
 ## Quality and validation commands
@@ -127,4 +146,6 @@ Jobs:
 
 - The OAuth callback is prototyped; full token exchange and durable Firebase session refresh for production requires additional provider/backend setup.
 - Build signing/notarization is not configured (intentional Stage 0 limitation).
-- Full DBML model is not implemented in Firestore yet; only minimum structures needed for Stage 0 security-rule tests.
+- Full DBML model is not implemented in Firestore yet: Stage 1 covers users, preferences, budgets, memberships and invitations; accounts, imports, transactions and the rest follow in later stages.
+- The live Google sign-in (token exchange into a Firebase session) is still the Stage 0 prototype; Stage 1 flows are tested with a provider stand-in.
+- Real-time behavior of listeners was verified on the emulator only.

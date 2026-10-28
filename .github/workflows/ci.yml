@@ -20,6 +20,8 @@ jobs:
           java-version: '21'
       - name: Install dependencies
         run: npm ci
+      - name: Install functions dependencies
+        run: npm ci --prefix functions
       - name: Format check
         run: npm run format
       - name: Lint
@@ -28,8 +30,12 @@ jobs:
         run: npm run typecheck
       - name: Unit tests
         run: npm run test:unit
-      - name: Firestore rules tests
+      - name: Firestore rules and service integration tests
         run: npm run test:rules
+      - name: UI flow tests (E2E)
+        run: npm run test:e2e
+      - name: Callable functions smoke test
+        run: npm run test:functions
 
   build-macos:
     runs-on: macos-latest

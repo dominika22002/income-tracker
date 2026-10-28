@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import type { OAuthCallbackPayload } from '../../shared/contracts';
 import { deriveSyncStatus } from '../../shared/syncState';
+import type { AppServices } from './backend/ports';
+import { BudgetApp } from './features/budgets/BudgetApp';
 
 type UiStatus = {
   type: 'info' | 'success' | 'error';
@@ -9,7 +11,7 @@ type UiStatus = {
 
 const DEFAULT_TEST_CONTENT = 'Stage 0 test file from Electron IPC';
 
-export function App() {
+export function App({ services }: { services?: AppServices } = {}) {
   const [mainHealth, setMainHealth] = useState<string>('Not checked');
   const [selectedFile, setSelectedFile] = useState<string>('None');
   const [testFilePath, setTestFilePath] = useState<string>('Not saved');
@@ -124,6 +126,8 @@ export function App() {
       <p className="muted">
         Sync status: <strong data-testid="sync-status">{syncStatus}</strong>
       </p>
+
+      {services && <BudgetApp services={services} />}
 
       <section className="card">
         <h2>Secure IPC prototype</h2>

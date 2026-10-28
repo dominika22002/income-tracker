@@ -11,6 +11,12 @@ export default defineConfig({
   preload: {
     build: {
       outDir: 'dist-electron/preload',
+      rollupOptions: {
+        output: {
+          format: 'cjs',
+          entryFileNames: '[name].js',
+        },
+      },
     },
   },
   renderer: {

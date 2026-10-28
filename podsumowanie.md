@@ -1,4 +1,4 @@
-podsumowanie etapu 1:
+podsumowanie etapu 0:
 
 Zrobione — zrealizowałem Etap 0 (bez wchodzenia w Etap 1+), z implementacją i uruchomioną weryfikacją.
 
@@ -90,3 +90,40 @@ OAuth live-flow nie był „na żywo” testowany (brak danych konfiguracyjnych/
 Brak konfiguracji certyfikatów podpisu (build przechodzi, podpisywanie pominięte).
 Jeśli chcesz, w kolejnym kroku mogę przygotować krótką checklistę manualnych testów M-* do wykonania na docelowych systemach (bez implementacji Etapu 1).
 
+podsumowanie etapu 1:
+Etap 1 jest zaimplementowany i wszystkie testy przechodzą. Nie robiłem commitów — zmiany są w working tree, kroki 1–8 zrobiłem po kolei, po każdym uruchamiając testy.
+
+Co zrobiono
+Plan: docs/etap-1-mapowanie.md opisuje mapowanie DBML → Firestore, indeksy, reguły, transakcje i wykryte rozbieżności R1–R9. Wdrożyłem go po Twojej decyzji D1–D3; D4, D5 i R8 przyjąłem wg rekomendacji z planu.
+Zainstalowałem JDK 21 przez winget, bo na maszynie nie było Javy.
+Reguły (firestore.rules): klient ma tylko odczyt danych tożsamości, budżetów, członkostw i zaproszeń. Dostęp do danych budżetu daje istnienie dokumentu budgets/{id}/active_members/{uid}. Serwer tworzy go i usuwa w tej samej transakcji co członkostwo.
+Logika serwerowa: src/server/ plus callable Cloud Functions w functions/. Czysta logika domeny jest w src/shared/domain/.
+profil i preferencje (domyślnie CHF, PLN, EUR);
+atomowe utworzenie budżetu z pierwszym adminem;
+zaproszenia: w bazie tylko skrót SHA-256 tokenu, ważność 7 dni, anulowanie, akceptacja, odrzucenie, zużycie linku i członkostwo w jednej transakcji;
+odejście, usunięcie członka i następca admina wg joined_at, potem membership_id;
+usunięcie budżetu, gdy odchodzi ostatni członek;
+trwałe usunięcie profilu: zakończenie członkostw, anonimizacja user_id, historia i dane budżetu bez zmian.
+UI w src/renderer/src/features/budgets/: tworzenie budżetu, zaproszenie, akceptacja i odrzucenie, odejście, usunięcie członka, waluty, usunięcie profilu. Bez nowych kanałów IPC.
+Pozostałe: ESLint zabrania firebase-admin w kodzie klienta, CI ma nowe kroki, README i scenariusze-testow.md są zaktualizowane.
+Wyniki weryfikacji
+Komenda	Wynik
+npm run format / lint / typecheck	OK
+npm run test:unit	72 testy
+npm run test:rules	81 testów (reguły i serwisy na emulatorze)
+npm run test:e2e	8 testów (UI; stabilny w 3 kolejnych uruchomieniach)
+npm run test:functions	3 testy (callable na emulatorach Auth, Firestore i Functions)
+test:e2e i test:functions to nowe skrypty dodane obok test:rules. Build electron-vite build też przechodzi.
+
+Decyzje projektowe
+Zaproszenia: jednorazowość jest ścisła, bo DBML nie ma pól accepted_by/resolved_at. Próba akceptacji przez osobę będącą już członkiem nie zużywa linku. invitee_email jest opcjonalne i wymaga zweryfikowanego e-maila.
+Usunięcie budżetu: dwie fazy. Transakcja blokuje dostęp, a ponawialne czyszczenie (znacznik budget_purge_queue) usuwa resztę danych.
+UI po utracie dostępu: przy błędzie permission-denied odświeża listę budżetów, bo emulator nie dostarczał wtedy pozostałych aktualizacji.
+E2E (zmiana względem planu): wszystko poza transportem callable działa w procesie; transport sprawdza osobny test dymny.
+Poza planem: dodałem podsumowanie.md do .prettierignore, bo ten plik już w HEAD nie przechodził prettier --check. Nie zmieniałem jego treści.
+Otwarte
+Cloud Functions wymagają planu Blaze przy wdrożeniu, a region nie jest wybrany (domyślnie us-central1).
+App Check nie jest skonfigurowany.
+Prawdziwe logowanie Google (wymiana tokenu w sesję Firebase) nadal jest prototypem z Etapu 0. Do tego dochodzą rejestracja linku income-tracker://invite w systemie i testy ręczne na macOS/Windows.
+Dane display_name i email kopiowane do active_members nie odświeżają się po zmianie w Google.
+Zachowanie nasłuchów Firestore sprawdziłem tylko na emulatorze.
