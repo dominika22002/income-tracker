@@ -1,0 +1,40 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function membershipDocId(budgetId) {
+      return budgetId + "_" + request.auth.uid;
+    }
+
+    function isActiveMember(budgetId) {
+      return signedIn()
+        && exists(
+          /databases/$(database)/documents/memberships/$(membershipDocId(budgetId))
+        )
+        && get(
+          /databases/$(database)/documents/memberships/$(membershipDocId(budgetId))
+        ).data.status == "active";
+    }
+
+    match /users/{userId} {
+      allow read, write: if signedIn() && request.auth.uid == userId;
+    }
+
+    match /budgets/{budgetId} {
+      allow read, write: if isActiveMember(budgetId);
+    }
+
+    match /budget_records/{budgetId}/items/{itemId} {
+      allow read, write: if isActiveMember(budgetId);
+    }
+
+    match /memberships/{membershipId} {
+      allow read: if signedIn() && resource.data.user_id == request.auth.uid;
+      allow write: if false;
+    }
+  }
+}
+

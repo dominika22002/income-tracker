@@ -1,0 +1,14 @@
+node_modules
+dist
+dist-electron
+out
+.idea
+.DS_Store
+coverage
+.firebase
+firebase-debug.log
+firestore-debug.log
+*.log
+.env
+.env.local
+.env.*.local
