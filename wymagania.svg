@@ -1,0 +1,639 @@
+<svg xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc" viewBox="0 0 2280 1799" width="2280" height="1799">
+<title id="title">Diagram modelu danych aplikacji</title>
+<desc id="desc">Diagram wygenerowany z wymagania.dbml. Karty zawierają tabele i pola; linie pokazują klucze obce.</desc>
+<style>text{font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.group{font-size:18px;font-weight:700}.table{font-size:15px;font-weight:700}.field{font-size:12px}.badge{font-size:9px;font-weight:700}</style>
+<rect width="2280" height="1799" fill="#fff"/>
+<path d="M 540 306.5 C 373.4 306.5, 216.6 145.5, 50 145.5" fill="none" stroke="#718096" stroke-opacity="0.22" stroke-width="1.2"/>
+<path d="M 540 513.5 C 373.4 513.5, 216.6 145.5, 50 145.5" fill="none" stroke="#718096" stroke-opacity="0.22" stroke-width="1.2"/>
+<path d="M 540 628.5 C 373.4 628.5, 216.6 444.5, 50 444.5" fill="none" stroke="#718096" stroke-opacity="0.22" stroke-width="1.2"/>
+<path d="M 540 651.5 C 373.4 651.5, 216.6 145.5, 50 145.5" fill="none" stroke="#718096" stroke-opacity="0.22" stroke-width="1.2"/>
+<path d="M 540 858.5 C 373.4 858.5, 216.6 444.5, 50 444.5" fill="none" stroke="#718096" stroke-opacity="0.22" stroke-width="1.2"/>
+<path d="M 540 881.5 C 373.4 881.5, 216.6 605.5, 50 605.5" fill="none" stroke="#718096" stroke-opacity="0.22" stroke-width="1.2"/>
+<path d="M 630 168.5 C 580.0 168.5, 590.0 444.5, 540 444.5" fill="none" stroke="#718096" stroke-opacity="0.22" stroke-width="1.2"/>
+<path d="M 630 191.5 C 580.0 191.5, 590.0 605.5, 540 605.5" fill="none" stroke="#718096" stroke-opacity="0.22" stroke-width="1.2"/>
+<path d="M 630 444.5 C 580.0 444.5, 590.0 444.5, 540 444.5" fill="none" stroke="#718096" stroke-opacity="0.22" stroke-width="1.2"/>
+<path d="M 1120 467.5 C 953.4 467.5, 796.6 145.5, 630 145.5" fill="none" stroke="#718096" stroke-opacity="0.22" stroke-width="1.2"/>
+<path d="M 630 490.5 C 580.0 490.5, 590.0 605.5, 540 605.5" fill="none" stroke="#718096" stroke-opacity="0.22" stroke-width="1.2"/>
+<path d="M 630 766.5 C 580.0 766.5, 590.0 444.5, 540 444.5" fill="none" stroke="#718096" stroke-opacity="0.22" stroke-width="1.2"/>
+<path d="M 1120 789.5 C 953.4 789.5, 796.6 145.5, 630 145.5" fill="none" stroke="#718096" stroke-opacity="0.22" stroke-width="1.2"/>
+<path d="M 630 1019.5 C 580.0 1019.5, 590.0 444.5, 540 444.5" fill="none" stroke="#718096" stroke-opacity="0.22" stroke-width="1.2"/>
+<path d="M 1120 1042.5 C 953.4 1042.5, 796.6 421.5, 630 421.5" fill="none" stroke="#718096" stroke-opacity="0.22" stroke-width="1.2"/>
+<path d="M 1120 1203.5 C 953.4 1203.5, 796.6 421.5, 630 421.5" fill="none" stroke="#718096" stroke-opacity="0.22" stroke-width="1.2"/>
+<path d="M 1790 168.5 C 1365.0 168.5, 965.0 444.5, 540 444.5" fill="none" stroke="#718096" stroke-opacity="0.22" stroke-width="1.2"/>
+<path d="M 2280 191.5 C 2113.4 191.5, 1956.6 145.5, 1790 145.5" fill="none" stroke="#718096" stroke-opacity="0.22" stroke-width="1.2"/>
+<path d="M 1790 283.5 C 1365.0 283.5, 965.0 605.5, 540 605.5" fill="none" stroke="#718096" stroke-opacity="0.22" stroke-width="1.2"/>
+<path d="M 1790 421.5 C 1365.0 421.5, 965.0 444.5, 540 444.5" fill="none" stroke="#718096" stroke-opacity="0.22" stroke-width="1.2"/>
+<path d="M 2280 444.5 C 2113.4 444.5, 1956.6 145.5, 1790 145.5" fill="none" stroke="#718096" stroke-opacity="0.22" stroke-width="1.2"/>
+<path d="M 1790 467.5 C 1365.0 467.5, 965.0 605.5, 540 605.5" fill="none" stroke="#718096" stroke-opacity="0.22" stroke-width="1.2"/>
+<path d="M 1210 1019.5 C 982.2 1019.5, 767.8 444.5, 540 444.5" fill="none" stroke="#718096" stroke-opacity="0.22" stroke-width="1.2"/>
+<path d="M 1210 1065.5 C 982.2 1065.5, 767.8 605.5, 540 605.5" fill="none" stroke="#718096" stroke-opacity="0.22" stroke-width="1.2"/>
+<path d="M 1210 1088.5 C 982.2 1088.5, 767.8 605.5, 540 605.5" fill="none" stroke="#718096" stroke-opacity="0.22" stroke-width="1.2"/>
+<path d="M 1210 168.5 C 982.2 168.5, 767.8 444.5, 540 444.5" fill="none" stroke="#718096" stroke-opacity="0.22" stroke-width="1.2"/>
+<path d="M 1210 191.5 C 1160.0 191.5, 1170.0 145.5, 1120 145.5" fill="none" stroke="#718096" stroke-opacity="0.22" stroke-width="1.2"/>
+<path d="M 1210 214.5 C 1160.0 214.5, 1170.0 421.5, 1120 421.5" fill="none" stroke="#718096" stroke-opacity="0.22" stroke-width="1.2"/>
+<path d="M 1700 444.5 C 1750.0 444.5, 1740.0 145.5, 1790 145.5" fill="none" stroke="#718096" stroke-opacity="0.22" stroke-width="1.2"/>
+<path d="M 1210 467.5 C 982.2 467.5, 767.8 605.5, 540 605.5" fill="none" stroke="#718096" stroke-opacity="0.22" stroke-width="1.2"/>
+<path d="M 1210 582.5 C 982.2 582.5, 767.8 605.5, 540 605.5" fill="none" stroke="#718096" stroke-opacity="0.22" stroke-width="1.2"/>
+<path d="M 1700 605.5 C 1533.4 605.5, 1376.6 996.5, 1210 996.5" fill="none" stroke="#718096" stroke-opacity="0.22" stroke-width="1.2"/>
+<path d="M 1210 743.5 C 982.2 743.5, 767.8 444.5, 540 444.5" fill="none" stroke="#718096" stroke-opacity="0.22" stroke-width="1.2"/>
+<path d="M 1700 766.5 C 1533.4 766.5, 1376.6 145.5, 1210 145.5" fill="none" stroke="#718096" stroke-opacity="0.22" stroke-width="1.2"/>
+<path d="M 1700 789.5 C 1750.0 789.5, 1740.0 145.5, 1790 145.5" fill="none" stroke="#718096" stroke-opacity="0.22" stroke-width="1.2"/>
+<path d="M 1790 720.5 C 1365.0 720.5, 965.0 444.5, 540 444.5" fill="none" stroke="#718096" stroke-opacity="0.22" stroke-width="1.2"/>
+<path d="M 2280 766.5 C 2113.4 766.5, 1956.6 145.5, 1790 145.5" fill="none" stroke="#718096" stroke-opacity="0.22" stroke-width="1.2"/>
+<path d="M 1790 858.5 C 1365.0 858.5, 965.0 605.5, 540 605.5" fill="none" stroke="#718096" stroke-opacity="0.22" stroke-width="1.2"/>
+<path d="M 1790 1134.5 C 1562.2 1134.5, 1347.8 145.5, 1120 145.5" fill="none" stroke="#718096" stroke-opacity="0.22" stroke-width="1.2"/>
+<path d="M 1790 1157.5 C 1562.2 1157.5, 1347.8 421.5, 1120 421.5" fill="none" stroke="#718096" stroke-opacity="0.22" stroke-width="1.2"/>
+<path d="M 1790 1272.5 C 1365.0 1272.5, 965.0 605.5, 540 605.5" fill="none" stroke="#718096" stroke-opacity="0.22" stroke-width="1.2"/>
+<path d="M 1790 1617.5 C 1740.0 1617.5, 1750.0 145.5, 1700 145.5" fill="none" stroke="#718096" stroke-opacity="0.22" stroke-width="1.2"/>
+<path d="M 2280 1663.5 C 2113.4 1663.5, 1956.6 1387.5, 1790 1387.5" fill="none" stroke="#718096" stroke-opacity="0.22" stroke-width="1.2"/>
+<path d="M 1790 973.5 C 1365.0 973.5, 965.0 444.5, 540 444.5" fill="none" stroke="#718096" stroke-opacity="0.22" stroke-width="1.2"/>
+<path d="M 1790 1019.5 C 1365.0 1019.5, 965.0 605.5, 540 605.5" fill="none" stroke="#718096" stroke-opacity="0.22" stroke-width="1.2"/>
+<path d="M 1700 1203.5 C 1533.4 1203.5, 1376.6 145.5, 1210 145.5" fill="none" stroke="#718096" stroke-opacity="0.22" stroke-width="1.2"/>
+<path d="M 1700 1226.5 C 1750.0 1226.5, 1740.0 950.5, 1790 950.5" fill="none" stroke="#718096" stroke-opacity="0.22" stroke-width="1.2"/>
+<text class="group" x="50" y="48" fill="#294761">Użytkownicy i dostęp</text>
+<rect x="50" y="92" width="490" height="134" rx="8" fill="#fff" stroke="#ccd5df" stroke-width="1.2"/>
+<path d="M 58 92 H 532 Q 540 92 540 100 V 134 H 50 V 100 Q 50 92 58 92" fill="#edf3f8"/>
+<text class="table" x="64" y="119" fill="#182230">users</text>
+<text class="badge" x="509" y="150" fill="#7b4bd1">PK</text>
+<text class="field" x="64" y="150" fill="#182230">user_id</text>
+<text class="field" x="260" y="150" fill="#526174">uuid</text>
+<line x1="62" y1="156" x2="528" y2="156" stroke="#eef1f5"/>
+<text class="field" x="64" y="173" fill="#182230">email</text>
+<text class="field" x="260" y="173" fill="#526174">varchar</text>
+<line x1="62" y1="179" x2="528" y2="179" stroke="#eef1f5"/>
+<text class="field" x="64" y="196" fill="#182230">display_name</text>
+<text class="field" x="260" y="196" fill="#526174">varchar</text>
+<line x1="62" y1="202" x2="528" y2="202" stroke="#eef1f5"/>
+<text class="field" x="64" y="219" fill="#182230">created_at</text>
+<text class="field" x="260" y="219" fill="#526174">timestamptz</text>
+<rect x="50" y="253" width="490" height="111" rx="8" fill="#fff" stroke="#ccd5df" stroke-width="1.2"/>
+<path d="M 58 253 H 532 Q 540 253 540 261 V 295 H 50 V 261 Q 50 253 58 253" fill="#edf3f8"/>
+<text class="table" x="64" y="280" fill="#182230">user_preferences</text>
+<text class="badge" x="509" y="311" fill="#7b4bd1">PK</text>
+<text class="field" x="64" y="311" fill="#182230">user_id</text>
+<text class="field" x="260" y="311" fill="#526174">uuid</text>
+<line x1="62" y1="317" x2="528" y2="317" stroke="#eef1f5"/>
+<text class="field" x="64" y="334" fill="#182230">primary_currency</text>
+<text class="field" x="260" y="334" fill="#526174">char(3)</text>
+<line x1="62" y1="340" x2="528" y2="340" stroke="#eef1f5"/>
+<text class="field" x="64" y="357" fill="#182230">secondary_currencies</text>
+<text class="field" x="260" y="357" fill="#526174">varchar</text>
+<rect x="50" y="391" width="490" height="134" rx="8" fill="#fff" stroke="#ccd5df" stroke-width="1.2"/>
+<path d="M 58 391 H 532 Q 540 391 540 399 V 433 H 50 V 399 Q 50 391 58 391" fill="#edf3f8"/>
+<text class="table" x="64" y="418" fill="#182230">budgets</text>
+<text class="badge" x="509" y="449" fill="#7b4bd1">PK</text>
+<text class="field" x="64" y="449" fill="#182230">budget_id</text>
+<text class="field" x="260" y="449" fill="#526174">uuid</text>
+<line x1="62" y1="455" x2="528" y2="455" stroke="#eef1f5"/>
+<text class="field" x="64" y="472" fill="#182230">name</text>
+<text class="field" x="260" y="472" fill="#526174">varchar</text>
+<line x1="62" y1="478" x2="528" y2="478" stroke="#eef1f5"/>
+<text class="field" x="64" y="495" fill="#182230">created_at</text>
+<text class="field" x="260" y="495" fill="#526174">timestamptz</text>
+<line x1="62" y1="501" x2="528" y2="501" stroke="#eef1f5"/>
+<text class="badge" x="509" y="518" fill="#197a8a">FK</text>
+<text class="field" x="64" y="518" fill="#182230">created_by_user_id</text>
+<text class="field" x="260" y="518" fill="#526174">uuid</text>
+<rect x="50" y="552" width="490" height="203" rx="8" fill="#fff" stroke="#ccd5df" stroke-width="1.2"/>
+<path d="M 58 552 H 532 Q 540 552 540 560 V 594 H 50 V 560 Q 50 552 58 552" fill="#edf3f8"/>
+<text class="table" x="64" y="579" fill="#182230">memberships</text>
+<text class="badge" x="509" y="610" fill="#7b4bd1">PK</text>
+<text class="field" x="64" y="610" fill="#182230">membership_id</text>
+<text class="field" x="260" y="610" fill="#526174">uuid</text>
+<line x1="62" y1="616" x2="528" y2="616" stroke="#eef1f5"/>
+<text class="badge" x="509" y="633" fill="#197a8a">FK</text>
+<text class="field" x="64" y="633" fill="#182230">budget_id</text>
+<text class="field" x="260" y="633" fill="#526174">uuid</text>
+<line x1="62" y1="639" x2="528" y2="639" stroke="#eef1f5"/>
+<text class="badge" x="509" y="656" fill="#197a8a">FK</text>
+<text class="field" x="64" y="656" fill="#182230">user_id</text>
+<text class="field" x="260" y="656" fill="#526174">uuid</text>
+<line x1="62" y1="662" x2="528" y2="662" stroke="#eef1f5"/>
+<text class="field" x="64" y="679" fill="#182230">role</text>
+<text class="field" x="260" y="679" fill="#526174">membership_role</text>
+<line x1="62" y1="685" x2="528" y2="685" stroke="#eef1f5"/>
+<text class="field" x="64" y="702" fill="#182230">status</text>
+<text class="field" x="260" y="702" fill="#526174">membership_status</text>
+<line x1="62" y1="708" x2="528" y2="708" stroke="#eef1f5"/>
+<text class="field" x="64" y="725" fill="#182230">joined_at</text>
+<text class="field" x="260" y="725" fill="#526174">timestamptz</text>
+<line x1="62" y1="731" x2="528" y2="731" stroke="#eef1f5"/>
+<text class="field" x="64" y="748" fill="#182230">ended_at</text>
+<text class="field" x="260" y="748" fill="#526174">timestamptz</text>
+<rect x="50" y="782" width="490" height="226" rx="8" fill="#fff" stroke="#ccd5df" stroke-width="1.2"/>
+<path d="M 58 782 H 532 Q 540 782 540 790 V 824 H 50 V 790 Q 50 782 58 782" fill="#edf3f8"/>
+<text class="table" x="64" y="809" fill="#182230">invitations</text>
+<text class="badge" x="509" y="840" fill="#7b4bd1">PK</text>
+<text class="field" x="64" y="840" fill="#182230">invitation_id</text>
+<text class="field" x="260" y="840" fill="#526174">uuid</text>
+<line x1="62" y1="846" x2="528" y2="846" stroke="#eef1f5"/>
+<text class="badge" x="509" y="863" fill="#197a8a">FK</text>
+<text class="field" x="64" y="863" fill="#182230">budget_id</text>
+<text class="field" x="260" y="863" fill="#526174">uuid</text>
+<line x1="62" y1="869" x2="528" y2="869" stroke="#eef1f5"/>
+<text class="badge" x="509" y="886" fill="#197a8a">FK</text>
+<text class="field" x="64" y="886" fill="#182230">invited_by_membership_id</text>
+<text class="field" x="260" y="886" fill="#526174">uuid</text>
+<line x1="62" y1="892" x2="528" y2="892" stroke="#eef1f5"/>
+<text class="field" x="64" y="909" fill="#182230">invitee_email</text>
+<text class="field" x="260" y="909" fill="#526174">varchar</text>
+<line x1="62" y1="915" x2="528" y2="915" stroke="#eef1f5"/>
+<text class="field" x="64" y="932" fill="#182230">token_hash</text>
+<text class="field" x="260" y="932" fill="#526174">char(64)</text>
+<line x1="62" y1="938" x2="528" y2="938" stroke="#eef1f5"/>
+<text class="field" x="64" y="955" fill="#182230">status</text>
+<text class="field" x="260" y="955" fill="#526174">invitation_status</text>
+<line x1="62" y1="961" x2="528" y2="961" stroke="#eef1f5"/>
+<text class="field" x="64" y="978" fill="#182230">created_at</text>
+<text class="field" x="260" y="978" fill="#526174">timestamptz</text>
+<line x1="62" y1="984" x2="528" y2="984" stroke="#eef1f5"/>
+<text class="field" x="64" y="1001" fill="#182230">expires_at</text>
+<text class="field" x="260" y="1001" fill="#526174">timestamptz</text>
+<text class="group" x="630" y="48" fill="#294761">Konta i import</text>
+<rect x="630" y="92" width="490" height="249" rx="8" fill="#fff" stroke="#ccd5df" stroke-width="1.2"/>
+<path d="M 638 92 H 1112 Q 1120 92 1120 100 V 134 H 630 V 100 Q 630 92 638 92" fill="#edf3f8"/>
+<text class="table" x="644" y="119" fill="#182230">accounts</text>
+<text class="badge" x="1089" y="150" fill="#7b4bd1">PK</text>
+<text class="field" x="644" y="150" fill="#182230">account_id</text>
+<text class="field" x="840" y="150" fill="#526174">uuid</text>
+<line x1="642" y1="156" x2="1108" y2="156" stroke="#eef1f5"/>
+<text class="badge" x="1089" y="173" fill="#197a8a">FK</text>
+<text class="field" x="644" y="173" fill="#182230">budget_id</text>
+<text class="field" x="840" y="173" fill="#526174">uuid</text>
+<line x1="642" y1="179" x2="1108" y2="179" stroke="#eef1f5"/>
+<text class="badge" x="1089" y="196" fill="#197a8a">FK</text>
+<text class="field" x="644" y="196" fill="#182230">owner_membership_id</text>
+<text class="field" x="840" y="196" fill="#526174">uuid</text>
+<line x1="642" y1="202" x2="1108" y2="202" stroke="#eef1f5"/>
+<text class="field" x="644" y="219" fill="#182230">label</text>
+<text class="field" x="840" y="219" fill="#526174">varchar</text>
+<line x1="642" y1="225" x2="1108" y2="225" stroke="#eef1f5"/>
+<text class="field" x="644" y="242" fill="#182230">institution_name</text>
+<text class="field" x="840" y="242" fill="#526174">varchar</text>
+<line x1="642" y1="248" x2="1108" y2="248" stroke="#eef1f5"/>
+<text class="field" x="644" y="265" fill="#182230">currency</text>
+<text class="field" x="840" y="265" fill="#526174">char(3)</text>
+<line x1="642" y1="271" x2="1108" y2="271" stroke="#eef1f5"/>
+<text class="field" x="644" y="288" fill="#182230">account_type</text>
+<text class="field" x="840" y="288" fill="#526174">account_type</text>
+<line x1="642" y1="294" x2="1108" y2="294" stroke="#eef1f5"/>
+<text class="field" x="644" y="311" fill="#182230">created_at</text>
+<text class="field" x="840" y="311" fill="#526174">timestamptz</text>
+<line x1="642" y1="317" x2="1108" y2="317" stroke="#eef1f5"/>
+<text class="field" x="644" y="334" fill="#182230">archived_at</text>
+<text class="field" x="840" y="334" fill="#526174">timestamptz</text>
+<rect x="630" y="368" width="490" height="295" rx="8" fill="#fff" stroke="#ccd5df" stroke-width="1.2"/>
+<path d="M 638 368 H 1112 Q 1120 368 1120 376 V 410 H 630 V 376 Q 630 368 638 368" fill="#edf3f8"/>
+<text class="table" x="644" y="395" fill="#182230">import_batches</text>
+<text class="badge" x="1089" y="426" fill="#7b4bd1">PK</text>
+<text class="field" x="644" y="426" fill="#182230">import_batch_id</text>
+<text class="field" x="840" y="426" fill="#526174">uuid</text>
+<line x1="642" y1="432" x2="1108" y2="432" stroke="#eef1f5"/>
+<text class="badge" x="1089" y="449" fill="#197a8a">FK</text>
+<text class="field" x="644" y="449" fill="#182230">budget_id</text>
+<text class="field" x="840" y="449" fill="#526174">uuid</text>
+<line x1="642" y1="455" x2="1108" y2="455" stroke="#eef1f5"/>
+<text class="badge" x="1089" y="472" fill="#197a8a">FK</text>
+<text class="field" x="644" y="472" fill="#182230">account_id</text>
+<text class="field" x="840" y="472" fill="#526174">uuid</text>
+<line x1="642" y1="478" x2="1108" y2="478" stroke="#eef1f5"/>
+<text class="badge" x="1089" y="495" fill="#197a8a">FK</text>
+<text class="field" x="644" y="495" fill="#182230">imported_by_membership_id</text>
+<text class="field" x="840" y="495" fill="#526174">uuid</text>
+<line x1="642" y1="501" x2="1108" y2="501" stroke="#eef1f5"/>
+<text class="field" x="644" y="518" fill="#182230">file_sha256</text>
+<text class="field" x="840" y="518" fill="#526174">char(64)</text>
+<line x1="642" y1="524" x2="1108" y2="524" stroke="#eef1f5"/>
+<text class="field" x="644" y="541" fill="#182230">source_format</text>
+<text class="field" x="840" y="541" fill="#526174">import_format</text>
+<line x1="642" y1="547" x2="1108" y2="547" stroke="#eef1f5"/>
+<text class="field" x="644" y="564" fill="#182230">parser_id</text>
+<text class="field" x="840" y="564" fill="#526174">varchar</text>
+<line x1="642" y1="570" x2="1108" y2="570" stroke="#eef1f5"/>
+<text class="field" x="644" y="587" fill="#182230">parser_version</text>
+<text class="field" x="840" y="587" fill="#526174">varchar</text>
+<line x1="642" y1="593" x2="1108" y2="593" stroke="#eef1f5"/>
+<text class="field" x="644" y="610" fill="#182230">status</text>
+<text class="field" x="840" y="610" fill="#526174">import_status</text>
+<line x1="642" y1="616" x2="1108" y2="616" stroke="#eef1f5"/>
+<text class="field" x="644" y="633" fill="#182230">imported_at</text>
+<text class="field" x="840" y="633" fill="#526174">timestamptz</text>
+<line x1="642" y1="639" x2="1108" y2="639" stroke="#eef1f5"/>
+<text class="field" x="644" y="656" fill="#182230">row_count</text>
+<text class="field" x="840" y="656" fill="#526174">int</text>
+<rect x="630" y="690" width="490" height="226" rx="8" fill="#fff" stroke="#ccd5df" stroke-width="1.2"/>
+<path d="M 638 690 H 1112 Q 1120 690 1120 698 V 732 H 630 V 698 Q 630 690 638 690" fill="#edf3f8"/>
+<text class="table" x="644" y="717" fill="#182230">import_profiles</text>
+<text class="badge" x="1089" y="748" fill="#7b4bd1">PK</text>
+<text class="field" x="644" y="748" fill="#182230">import_profile_id</text>
+<text class="field" x="840" y="748" fill="#526174">uuid</text>
+<line x1="642" y1="754" x2="1108" y2="754" stroke="#eef1f5"/>
+<text class="badge" x="1089" y="771" fill="#197a8a">FK</text>
+<text class="field" x="644" y="771" fill="#182230">budget_id</text>
+<text class="field" x="840" y="771" fill="#526174">uuid</text>
+<line x1="642" y1="777" x2="1108" y2="777" stroke="#eef1f5"/>
+<text class="badge" x="1089" y="794" fill="#197a8a">FK</text>
+<text class="field" x="644" y="794" fill="#182230">account_id</text>
+<text class="field" x="840" y="794" fill="#526174">uuid</text>
+<line x1="642" y1="800" x2="1108" y2="800" stroke="#eef1f5"/>
+<text class="field" x="644" y="817" fill="#182230">source_format</text>
+<text class="field" x="840" y="817" fill="#526174">import_format</text>
+<line x1="642" y1="823" x2="1108" y2="823" stroke="#eef1f5"/>
+<text class="field" x="644" y="840" fill="#182230">parser_id</text>
+<text class="field" x="840" y="840" fill="#526174">varchar</text>
+<line x1="642" y1="846" x2="1108" y2="846" stroke="#eef1f5"/>
+<text class="field" x="644" y="863" fill="#182230">parser_version</text>
+<text class="field" x="840" y="863" fill="#526174">varchar</text>
+<line x1="642" y1="869" x2="1108" y2="869" stroke="#eef1f5"/>
+<text class="field" x="644" y="886" fill="#182230">mapping_config</text>
+<text class="field" x="840" y="886" fill="#526174">jsonb</text>
+<line x1="642" y1="892" x2="1108" y2="892" stroke="#eef1f5"/>
+<text class="field" x="644" y="909" fill="#182230">updated_at</text>
+<text class="field" x="840" y="909" fill="#526174">timestamptz</text>
+<rect x="630" y="943" width="490" height="157" rx="8" fill="#fff" stroke="#ccd5df" stroke-width="1.2"/>
+<path d="M 638 943 H 1112 Q 1120 943 1120 951 V 985 H 630 V 951 Q 630 943 638 943" fill="#edf3f8"/>
+<text class="table" x="644" y="970" fill="#182230">import_periods</text>
+<text class="badge" x="1089" y="1001" fill="#7b4bd1">PK</text>
+<text class="field" x="644" y="1001" fill="#182230">import_period_id</text>
+<text class="field" x="840" y="1001" fill="#526174">uuid</text>
+<line x1="642" y1="1007" x2="1108" y2="1007" stroke="#eef1f5"/>
+<text class="badge" x="1089" y="1024" fill="#197a8a">FK</text>
+<text class="field" x="644" y="1024" fill="#182230">budget_id</text>
+<text class="field" x="840" y="1024" fill="#526174">uuid</text>
+<line x1="642" y1="1030" x2="1108" y2="1030" stroke="#eef1f5"/>
+<text class="badge" x="1089" y="1047" fill="#197a8a">FK</text>
+<text class="field" x="644" y="1047" fill="#182230">import_batch_id</text>
+<text class="field" x="840" y="1047" fill="#526174">uuid</text>
+<line x1="642" y1="1053" x2="1108" y2="1053" stroke="#eef1f5"/>
+<text class="field" x="644" y="1070" fill="#182230">period_start</text>
+<text class="field" x="840" y="1070" fill="#526174">date</text>
+<line x1="642" y1="1076" x2="1108" y2="1076" stroke="#eef1f5"/>
+<text class="field" x="644" y="1093" fill="#182230">period_end</text>
+<text class="field" x="840" y="1093" fill="#526174">date</text>
+<rect x="630" y="1127" width="490" height="226" rx="8" fill="#fff" stroke="#ccd5df" stroke-width="1.2"/>
+<path d="M 638 1127 H 1112 Q 1120 1127 1120 1135 V 1169 H 630 V 1135 Q 630 1127 638 1127" fill="#edf3f8"/>
+<text class="table" x="644" y="1154" fill="#182230">local_statement_files</text>
+<text class="badge" x="1089" y="1185" fill="#7b4bd1">PK</text>
+<text class="field" x="644" y="1185" fill="#182230">local_file_id</text>
+<text class="field" x="840" y="1185" fill="#526174">uuid</text>
+<line x1="642" y1="1191" x2="1108" y2="1191" stroke="#eef1f5"/>
+<text class="badge" x="1089" y="1208" fill="#197a8a">FK</text>
+<text class="field" x="644" y="1208" fill="#182230">import_batch_id</text>
+<text class="field" x="840" y="1208" fill="#526174">uuid</text>
+<line x1="642" y1="1214" x2="1108" y2="1214" stroke="#eef1f5"/>
+<text class="field" x="644" y="1231" fill="#182230">original_file_name</text>
+<text class="field" x="840" y="1231" fill="#526174">text</text>
+<line x1="642" y1="1237" x2="1108" y2="1237" stroke="#eef1f5"/>
+<text class="field" x="644" y="1254" fill="#182230">relative_path</text>
+<text class="field" x="840" y="1254" fill="#526174">text</text>
+<line x1="642" y1="1260" x2="1108" y2="1260" stroke="#eef1f5"/>
+<text class="field" x="644" y="1277" fill="#182230">content_hash</text>
+<text class="field" x="840" y="1277" fill="#526174">char(64)</text>
+<line x1="642" y1="1283" x2="1108" y2="1283" stroke="#eef1f5"/>
+<text class="field" x="644" y="1300" fill="#182230">file_size_bytes</text>
+<text class="field" x="840" y="1300" fill="#526174">bigint</text>
+<line x1="642" y1="1306" x2="1108" y2="1306" stroke="#eef1f5"/>
+<text class="field" x="644" y="1323" fill="#182230">stored_at</text>
+<text class="field" x="840" y="1323" fill="#526174">timestamptz</text>
+<line x1="642" y1="1329" x2="1108" y2="1329" stroke="#eef1f5"/>
+<text class="field" x="644" y="1346" fill="#182230">deleted_at</text>
+<text class="field" x="840" y="1346" fill="#526174">timestamptz</text>
+<text class="group" x="1210" y="48" fill="#294761">Transakcje i transfery</text>
+<rect x="1210" y="92" width="490" height="548" rx="8" fill="#fff" stroke="#ccd5df" stroke-width="1.2"/>
+<path d="M 1218 92 H 1692 Q 1700 92 1700 100 V 134 H 1210 V 100 Q 1210 92 1218 92" fill="#edf3f8"/>
+<text class="table" x="1224" y="119" fill="#182230">transactions</text>
+<text class="badge" x="1669" y="150" fill="#7b4bd1">PK</text>
+<text class="field" x="1224" y="150" fill="#182230">transaction_id</text>
+<text class="field" x="1420" y="150" fill="#526174">uuid</text>
+<line x1="1222" y1="156" x2="1688" y2="156" stroke="#eef1f5"/>
+<text class="badge" x="1669" y="173" fill="#197a8a">FK</text>
+<text class="field" x="1224" y="173" fill="#182230">budget_id</text>
+<text class="field" x="1420" y="173" fill="#526174">uuid</text>
+<line x1="1222" y1="179" x2="1688" y2="179" stroke="#eef1f5"/>
+<text class="badge" x="1669" y="196" fill="#197a8a">FK</text>
+<text class="field" x="1224" y="196" fill="#182230">account_id</text>
+<text class="field" x="1420" y="196" fill="#526174">uuid</text>
+<line x1="1222" y1="202" x2="1688" y2="202" stroke="#eef1f5"/>
+<text class="badge" x="1669" y="219" fill="#197a8a">FK</text>
+<text class="field" x="1224" y="219" fill="#182230">import_batch_id</text>
+<text class="field" x="1420" y="219" fill="#526174">uuid</text>
+<line x1="1222" y1="225" x2="1688" y2="225" stroke="#eef1f5"/>
+<text class="field" x="1224" y="242" fill="#182230">source_row_number</text>
+<text class="field" x="1420" y="242" fill="#526174">int</text>
+<line x1="1222" y1="248" x2="1688" y2="248" stroke="#eef1f5"/>
+<text class="field" x="1224" y="265" fill="#182230">bank_transaction_id</text>
+<text class="field" x="1420" y="265" fill="#526174">varchar</text>
+<line x1="1222" y1="271" x2="1688" y2="271" stroke="#eef1f5"/>
+<text class="field" x="1224" y="288" fill="#182230">normalized_fingerprint</text>
+<text class="field" x="1420" y="288" fill="#526174">char(64)</text>
+<line x1="1222" y1="294" x2="1688" y2="294" stroke="#eef1f5"/>
+<text class="field" x="1224" y="311" fill="#182230">operation_date</text>
+<text class="field" x="1420" y="311" fill="#526174">date</text>
+<line x1="1222" y1="317" x2="1688" y2="317" stroke="#eef1f5"/>
+<text class="field" x="1224" y="334" fill="#182230">description</text>
+<text class="field" x="1420" y="334" fill="#526174">text</text>
+<line x1="1222" y1="340" x2="1688" y2="340" stroke="#eef1f5"/>
+<text class="field" x="1224" y="357" fill="#182230">amount</text>
+<text class="field" x="1420" y="357" fill="#526174">decimal(19,4)</text>
+<line x1="1222" y1="363" x2="1688" y2="363" stroke="#eef1f5"/>
+<text class="field" x="1224" y="380" fill="#182230">currency</text>
+<text class="field" x="1420" y="380" fill="#526174">char(3)</text>
+<line x1="1222" y1="386" x2="1688" y2="386" stroke="#eef1f5"/>
+<text class="field" x="1224" y="403" fill="#182230">type</text>
+<text class="field" x="1420" y="403" fill="#526174">transaction_type</text>
+<line x1="1222" y1="409" x2="1688" y2="409" stroke="#eef1f5"/>
+<text class="field" x="1224" y="426" fill="#182230">expense_frequency</text>
+<text class="field" x="1420" y="426" fill="#526174">expense_frequency</text>
+<line x1="1222" y1="432" x2="1688" y2="432" stroke="#eef1f5"/>
+<text class="badge" x="1669" y="449" fill="#197a8a">FK</text>
+<text class="field" x="1224" y="449" fill="#182230">category_id</text>
+<text class="field" x="1420" y="449" fill="#526174">uuid</text>
+<line x1="1222" y1="455" x2="1688" y2="455" stroke="#eef1f5"/>
+<text class="badge" x="1669" y="472" fill="#197a8a">FK</text>
+<text class="field" x="1224" y="472" fill="#182230">created_by_membership_id</text>
+<text class="field" x="1420" y="472" fill="#526174">uuid</text>
+<line x1="1222" y1="478" x2="1688" y2="478" stroke="#eef1f5"/>
+<text class="field" x="1224" y="495" fill="#182230">created_at</text>
+<text class="field" x="1420" y="495" fill="#526174">timestamptz</text>
+<line x1="1222" y1="501" x2="1688" y2="501" stroke="#eef1f5"/>
+<text class="field" x="1224" y="518" fill="#182230">note</text>
+<text class="field" x="1420" y="518" fill="#526174">text</text>
+<line x1="1222" y1="524" x2="1688" y2="524" stroke="#eef1f5"/>
+<text class="field" x="1224" y="541" fill="#182230">hidden_mode</text>
+<text class="field" x="1420" y="541" fill="#526174">hidden_mode</text>
+<line x1="1222" y1="547" x2="1688" y2="547" stroke="#eef1f5"/>
+<text class="field" x="1224" y="564" fill="#182230">hidden_until</text>
+<text class="field" x="1420" y="564" fill="#526174">timestamptz</text>
+<line x1="1222" y1="570" x2="1688" y2="570" stroke="#eef1f5"/>
+<text class="badge" x="1669" y="587" fill="#197a8a">FK</text>
+<text class="field" x="1224" y="587" fill="#182230">hidden_by_membership_id</text>
+<text class="field" x="1420" y="587" fill="#526174">uuid</text>
+<line x1="1222" y1="593" x2="1688" y2="593" stroke="#eef1f5"/>
+<text class="badge" x="1669" y="610" fill="#197a8a">FK</text>
+<text class="field" x="1224" y="610" fill="#182230">transfer_group_id</text>
+<text class="field" x="1420" y="610" fill="#526174">uuid</text>
+<line x1="1222" y1="616" x2="1688" y2="616" stroke="#eef1f5"/>
+<text class="field" x="1224" y="633" fill="#182230">transfer_leg</text>
+<text class="field" x="1420" y="633" fill="#526174">transfer_leg</text>
+<rect x="1210" y="667" width="490" height="249" rx="8" fill="#fff" stroke="#ccd5df" stroke-width="1.2"/>
+<path d="M 1218 667 H 1692 Q 1700 667 1700 675 V 709 H 1210 V 675 Q 1210 667 1218 667" fill="#edf3f8"/>
+<text class="table" x="1224" y="694" fill="#182230">split_items</text>
+<text class="badge" x="1669" y="725" fill="#7b4bd1">PK</text>
+<text class="field" x="1224" y="725" fill="#182230">split_item_id</text>
+<text class="field" x="1420" y="725" fill="#526174">uuid</text>
+<line x1="1222" y1="731" x2="1688" y2="731" stroke="#eef1f5"/>
+<text class="badge" x="1669" y="748" fill="#197a8a">FK</text>
+<text class="field" x="1224" y="748" fill="#182230">budget_id</text>
+<text class="field" x="1420" y="748" fill="#526174">uuid</text>
+<line x1="1222" y1="754" x2="1688" y2="754" stroke="#eef1f5"/>
+<text class="badge" x="1669" y="771" fill="#197a8a">FK</text>
+<text class="field" x="1224" y="771" fill="#182230">transaction_id</text>
+<text class="field" x="1420" y="771" fill="#526174">uuid</text>
+<line x1="1222" y1="777" x2="1688" y2="777" stroke="#eef1f5"/>
+<text class="badge" x="1669" y="794" fill="#197a8a">FK</text>
+<text class="field" x="1224" y="794" fill="#182230">category_id</text>
+<text class="field" x="1420" y="794" fill="#526174">uuid</text>
+<line x1="1222" y1="800" x2="1688" y2="800" stroke="#eef1f5"/>
+<text class="field" x="1224" y="817" fill="#182230">amount</text>
+<text class="field" x="1420" y="817" fill="#526174">decimal(19,4)</text>
+<line x1="1222" y1="823" x2="1688" y2="823" stroke="#eef1f5"/>
+<text class="field" x="1224" y="840" fill="#182230">expense_frequency</text>
+<text class="field" x="1420" y="840" fill="#526174">expense_frequency</text>
+<line x1="1222" y1="846" x2="1688" y2="846" stroke="#eef1f5"/>
+<text class="field" x="1224" y="863" fill="#182230">description</text>
+<text class="field" x="1420" y="863" fill="#526174">text</text>
+<line x1="1222" y1="869" x2="1688" y2="869" stroke="#eef1f5"/>
+<text class="field" x="1224" y="886" fill="#182230">note</text>
+<text class="field" x="1420" y="886" fill="#526174">text</text>
+<line x1="1222" y1="892" x2="1688" y2="892" stroke="#eef1f5"/>
+<text class="field" x="1224" y="909" fill="#182230">position</text>
+<text class="field" x="1420" y="909" fill="#526174">int</text>
+<rect x="1210" y="943" width="490" height="180" rx="8" fill="#fff" stroke="#ccd5df" stroke-width="1.2"/>
+<path d="M 1218 943 H 1692 Q 1700 943 1700 951 V 985 H 1210 V 951 Q 1210 943 1218 943" fill="#edf3f8"/>
+<text class="table" x="1224" y="970" fill="#182230">transfer_groups</text>
+<text class="badge" x="1669" y="1001" fill="#7b4bd1">PK</text>
+<text class="field" x="1224" y="1001" fill="#182230">transfer_group_id</text>
+<text class="field" x="1420" y="1001" fill="#526174">uuid</text>
+<line x1="1222" y1="1007" x2="1688" y2="1007" stroke="#eef1f5"/>
+<text class="badge" x="1669" y="1024" fill="#197a8a">FK</text>
+<text class="field" x="1224" y="1024" fill="#182230">budget_id</text>
+<text class="field" x="1420" y="1024" fill="#526174">uuid</text>
+<line x1="1222" y1="1030" x2="1688" y2="1030" stroke="#eef1f5"/>
+<text class="field" x="1224" y="1047" fill="#182230">status</text>
+<text class="field" x="1420" y="1047" fill="#526174">transfer_status</text>
+<line x1="1222" y1="1053" x2="1688" y2="1053" stroke="#eef1f5"/>
+<text class="badge" x="1669" y="1070" fill="#197a8a">FK</text>
+<text class="field" x="1224" y="1070" fill="#182230">created_by_membership_id</text>
+<text class="field" x="1420" y="1070" fill="#526174">uuid</text>
+<line x1="1222" y1="1076" x2="1688" y2="1076" stroke="#eef1f5"/>
+<text class="badge" x="1669" y="1093" fill="#197a8a">FK</text>
+<text class="field" x="1224" y="1093" fill="#182230">confirmed_by_membership_id</text>
+<text class="field" x="1420" y="1093" fill="#526174">uuid</text>
+<line x1="1222" y1="1099" x2="1688" y2="1099" stroke="#eef1f5"/>
+<text class="field" x="1224" y="1116" fill="#182230">confirmed_at</text>
+<text class="field" x="1420" y="1116" fill="#526174">timestamptz</text>
+<rect x="1210" y="1150" width="490" height="88" rx="8" fill="#fff" stroke="#ccd5df" stroke-width="1.2"/>
+<path d="M 1218 1150 H 1692 Q 1700 1150 1700 1158 V 1192 H 1210 V 1158 Q 1210 1150 1218 1150" fill="#edf3f8"/>
+<text class="table" x="1224" y="1177" fill="#182230">transaction_tags</text>
+<text class="badge" x="1669" y="1208" fill="#197a8a">FK</text>
+<text class="field" x="1224" y="1208" fill="#182230">transaction_id</text>
+<text class="field" x="1420" y="1208" fill="#526174">uuid</text>
+<line x1="1222" y1="1214" x2="1688" y2="1214" stroke="#eef1f5"/>
+<text class="badge" x="1669" y="1231" fill="#197a8a">FK</text>
+<text class="field" x="1224" y="1231" fill="#182230">tag_id</text>
+<text class="field" x="1420" y="1231" fill="#526174">uuid</text>
+<text class="group" x="1790" y="48" fill="#294761">Kategorie i raporty</text>
+<rect x="1790" y="92" width="490" height="226" rx="8" fill="#fff" stroke="#ccd5df" stroke-width="1.2"/>
+<path d="M 1798 92 H 2272 Q 2280 92 2280 100 V 134 H 1790 V 100 Q 1790 92 1798 92" fill="#edf3f8"/>
+<text class="table" x="1804" y="119" fill="#182230">categories</text>
+<text class="badge" x="2249" y="150" fill="#7b4bd1">PK</text>
+<text class="field" x="1804" y="150" fill="#182230">category_id</text>
+<text class="field" x="2000" y="150" fill="#526174">uuid</text>
+<line x1="1802" y1="156" x2="2268" y2="156" stroke="#eef1f5"/>
+<text class="badge" x="2249" y="173" fill="#197a8a">FK</text>
+<text class="field" x="1804" y="173" fill="#182230">budget_id</text>
+<text class="field" x="2000" y="173" fill="#526174">uuid</text>
+<line x1="1802" y1="179" x2="2268" y2="179" stroke="#eef1f5"/>
+<text class="badge" x="2249" y="196" fill="#197a8a">FK</text>
+<text class="field" x="1804" y="196" fill="#182230">parent_category_id</text>
+<text class="field" x="2000" y="196" fill="#526174">uuid</text>
+<line x1="1802" y1="202" x2="2268" y2="202" stroke="#eef1f5"/>
+<text class="field" x="1804" y="219" fill="#182230">name</text>
+<text class="field" x="2000" y="219" fill="#526174">varchar</text>
+<line x1="1802" y1="225" x2="2268" y2="225" stroke="#eef1f5"/>
+<text class="field" x="1804" y="242" fill="#182230">kind</text>
+<text class="field" x="2000" y="242" fill="#526174">category_kind</text>
+<line x1="1802" y1="248" x2="2268" y2="248" stroke="#eef1f5"/>
+<text class="field" x="1804" y="265" fill="#182230">expense_nature</text>
+<text class="field" x="2000" y="265" fill="#526174">expense_nature</text>
+<line x1="1802" y1="271" x2="2268" y2="271" stroke="#eef1f5"/>
+<text class="badge" x="2249" y="288" fill="#197a8a">FK</text>
+<text class="field" x="1804" y="288" fill="#182230">created_by_membership_id</text>
+<text class="field" x="2000" y="288" fill="#526174">uuid</text>
+<line x1="1802" y1="294" x2="2268" y2="294" stroke="#eef1f5"/>
+<text class="field" x="1804" y="311" fill="#182230">archived_at</text>
+<text class="field" x="2000" y="311" fill="#526174">timestamptz</text>
+<rect x="1790" y="345" width="490" height="272" rx="8" fill="#fff" stroke="#ccd5df" stroke-width="1.2"/>
+<path d="M 1798 345 H 2272 Q 2280 345 2280 353 V 387 H 1790 V 353 Q 1790 345 1798 345" fill="#edf3f8"/>
+<text class="table" x="1804" y="372" fill="#182230">categorization_rules</text>
+<text class="badge" x="2249" y="403" fill="#7b4bd1">PK</text>
+<text class="field" x="1804" y="403" fill="#182230">rule_id</text>
+<text class="field" x="2000" y="403" fill="#526174">uuid</text>
+<line x1="1802" y1="409" x2="2268" y2="409" stroke="#eef1f5"/>
+<text class="badge" x="2249" y="426" fill="#197a8a">FK</text>
+<text class="field" x="1804" y="426" fill="#182230">budget_id</text>
+<text class="field" x="2000" y="426" fill="#526174">uuid</text>
+<line x1="1802" y1="432" x2="2268" y2="432" stroke="#eef1f5"/>
+<text class="badge" x="2249" y="449" fill="#197a8a">FK</text>
+<text class="field" x="1804" y="449" fill="#182230">category_id</text>
+<text class="field" x="2000" y="449" fill="#526174">uuid</text>
+<line x1="1802" y1="455" x2="2268" y2="455" stroke="#eef1f5"/>
+<text class="badge" x="2249" y="472" fill="#197a8a">FK</text>
+<text class="field" x="1804" y="472" fill="#182230">created_by_membership_id</text>
+<text class="field" x="2000" y="472" fill="#526174">uuid</text>
+<line x1="1802" y1="478" x2="2268" y2="478" stroke="#eef1f5"/>
+<text class="field" x="1804" y="495" fill="#182230">source</text>
+<text class="field" x="2000" y="495" fill="#526174">categorization_rule_source</text>
+<line x1="1802" y1="501" x2="2268" y2="501" stroke="#eef1f5"/>
+<text class="field" x="1804" y="518" fill="#182230">match_field</text>
+<text class="field" x="2000" y="518" fill="#526174">match_field</text>
+<line x1="1802" y1="524" x2="2268" y2="524" stroke="#eef1f5"/>
+<text class="field" x="1804" y="541" fill="#182230">operator</text>
+<text class="field" x="2000" y="541" fill="#526174">match_operator</text>
+<line x1="1802" y1="547" x2="2268" y2="547" stroke="#eef1f5"/>
+<text class="field" x="1804" y="564" fill="#182230">match_value</text>
+<text class="field" x="2000" y="564" fill="#526174">text</text>
+<line x1="1802" y1="570" x2="2268" y2="570" stroke="#eef1f5"/>
+<text class="field" x="1804" y="587" fill="#182230">priority</text>
+<text class="field" x="2000" y="587" fill="#526174">int</text>
+<line x1="1802" y1="593" x2="2268" y2="593" stroke="#eef1f5"/>
+<text class="field" x="1804" y="610" fill="#182230">enabled</text>
+<text class="field" x="2000" y="610" fill="#526174">boolean</text>
+<rect x="1790" y="644" width="490" height="226" rx="8" fill="#fff" stroke="#ccd5df" stroke-width="1.2"/>
+<path d="M 1798 644 H 2272 Q 2280 644 2280 652 V 686 H 1790 V 652 Q 1790 644 1798 644" fill="#edf3f8"/>
+<text class="table" x="1804" y="671" fill="#182230">spending_limits</text>
+<text class="badge" x="2249" y="702" fill="#7b4bd1">PK</text>
+<text class="field" x="1804" y="702" fill="#182230">spending_limit_id</text>
+<text class="field" x="2000" y="702" fill="#526174">uuid</text>
+<line x1="1802" y1="708" x2="2268" y2="708" stroke="#eef1f5"/>
+<text class="badge" x="2249" y="725" fill="#197a8a">FK</text>
+<text class="field" x="1804" y="725" fill="#182230">budget_id</text>
+<text class="field" x="2000" y="725" fill="#526174">uuid</text>
+<line x1="1802" y1="731" x2="2268" y2="731" stroke="#eef1f5"/>
+<text class="field" x="1804" y="748" fill="#182230">limit_scope</text>
+<text class="field" x="2000" y="748" fill="#526174">spending_limit_scope</text>
+<line x1="1802" y1="754" x2="2268" y2="754" stroke="#eef1f5"/>
+<text class="badge" x="2249" y="771" fill="#197a8a">FK</text>
+<text class="field" x="1804" y="771" fill="#182230">category_id</text>
+<text class="field" x="2000" y="771" fill="#526174">uuid</text>
+<line x1="1802" y1="777" x2="2268" y2="777" stroke="#eef1f5"/>
+<text class="field" x="1804" y="794" fill="#182230">period</text>
+<text class="field" x="2000" y="794" fill="#526174">spending_limit_period</text>
+<line x1="1802" y1="800" x2="2268" y2="800" stroke="#eef1f5"/>
+<text class="field" x="1804" y="817" fill="#182230">limit_amount</text>
+<text class="field" x="2000" y="817" fill="#526174">decimal(19,4)</text>
+<line x1="1802" y1="823" x2="2268" y2="823" stroke="#eef1f5"/>
+<text class="field" x="1804" y="840" fill="#182230">currency</text>
+<text class="field" x="2000" y="840" fill="#526174">char(3)</text>
+<line x1="1802" y1="846" x2="2268" y2="846" stroke="#eef1f5"/>
+<text class="badge" x="2249" y="863" fill="#197a8a">FK</text>
+<text class="field" x="1804" y="863" fill="#182230">created_by_membership_id</text>
+<text class="field" x="2000" y="863" fill="#526174">uuid</text>
+<rect x="1790" y="897" width="490" height="134" rx="8" fill="#fff" stroke="#ccd5df" stroke-width="1.2"/>
+<path d="M 1798 897 H 2272 Q 2280 897 2280 905 V 939 H 1790 V 905 Q 1790 897 1798 897" fill="#edf3f8"/>
+<text class="table" x="1804" y="924" fill="#182230">tags</text>
+<text class="badge" x="2249" y="955" fill="#7b4bd1">PK</text>
+<text class="field" x="1804" y="955" fill="#182230">tag_id</text>
+<text class="field" x="2000" y="955" fill="#526174">uuid</text>
+<line x1="1802" y1="961" x2="2268" y2="961" stroke="#eef1f5"/>
+<text class="badge" x="2249" y="978" fill="#197a8a">FK</text>
+<text class="field" x="1804" y="978" fill="#182230">budget_id</text>
+<text class="field" x="2000" y="978" fill="#526174">uuid</text>
+<line x1="1802" y1="984" x2="2268" y2="984" stroke="#eef1f5"/>
+<text class="field" x="1804" y="1001" fill="#182230">name</text>
+<text class="field" x="2000" y="1001" fill="#526174">varchar</text>
+<line x1="1802" y1="1007" x2="2268" y2="1007" stroke="#eef1f5"/>
+<text class="badge" x="2249" y="1024" fill="#197a8a">FK</text>
+<text class="field" x="1804" y="1024" fill="#182230">created_by_membership_id</text>
+<text class="field" x="2000" y="1024" fill="#526174">uuid</text>
+<rect x="1790" y="1058" width="490" height="249" rx="8" fill="#fff" stroke="#ccd5df" stroke-width="1.2"/>
+<path d="M 1798 1058 H 2272 Q 2280 1058 2280 1066 V 1100 H 1790 V 1066 Q 1790 1058 1798 1058" fill="#edf3f8"/>
+<text class="table" x="1804" y="1085" fill="#182230">account_balance_snapshots</text>
+<text class="badge" x="2249" y="1116" fill="#7b4bd1">PK</text>
+<text class="field" x="1804" y="1116" fill="#182230">snapshot_id</text>
+<text class="field" x="2000" y="1116" fill="#526174">uuid</text>
+<line x1="1802" y1="1122" x2="2268" y2="1122" stroke="#eef1f5"/>
+<text class="badge" x="2249" y="1139" fill="#197a8a">FK</text>
+<text class="field" x="1804" y="1139" fill="#182230">account_id</text>
+<text class="field" x="2000" y="1139" fill="#526174">uuid</text>
+<line x1="1802" y1="1145" x2="2268" y2="1145" stroke="#eef1f5"/>
+<text class="badge" x="2249" y="1162" fill="#197a8a">FK</text>
+<text class="field" x="1804" y="1162" fill="#182230">import_batch_id</text>
+<text class="field" x="2000" y="1162" fill="#526174">uuid</text>
+<line x1="1802" y1="1168" x2="2268" y2="1168" stroke="#eef1f5"/>
+<text class="field" x="1804" y="1185" fill="#182230">balance_date</text>
+<text class="field" x="2000" y="1185" fill="#526174">date</text>
+<line x1="1802" y1="1191" x2="2268" y2="1191" stroke="#eef1f5"/>
+<text class="field" x="1804" y="1208" fill="#182230">balance_amount</text>
+<text class="field" x="2000" y="1208" fill="#526174">decimal(19,4)</text>
+<line x1="1802" y1="1214" x2="2268" y2="1214" stroke="#eef1f5"/>
+<text class="field" x="1804" y="1231" fill="#182230">currency</text>
+<text class="field" x="2000" y="1231" fill="#526174">char(3)</text>
+<line x1="1802" y1="1237" x2="2268" y2="1237" stroke="#eef1f5"/>
+<text class="field" x="1804" y="1254" fill="#182230">source</text>
+<text class="field" x="2000" y="1254" fill="#526174">balance_source</text>
+<line x1="1802" y1="1260" x2="2268" y2="1260" stroke="#eef1f5"/>
+<text class="badge" x="2249" y="1277" fill="#197a8a">FK</text>
+<text class="field" x="1804" y="1277" fill="#182230">created_by_membership_id</text>
+<text class="field" x="2000" y="1277" fill="#526174">uuid</text>
+<line x1="1802" y1="1283" x2="2268" y2="1283" stroke="#eef1f5"/>
+<text class="field" x="1804" y="1300" fill="#182230">created_at</text>
+<text class="field" x="2000" y="1300" fill="#526174">timestamptz</text>
+<rect x="1790" y="1334" width="490" height="203" rx="8" fill="#fff" stroke="#ccd5df" stroke-width="1.2"/>
+<path d="M 1798 1334 H 2272 Q 2280 1334 2280 1342 V 1376 H 1790 V 1342 Q 1790 1334 1798 1334" fill="#edf3f8"/>
+<text class="table" x="1804" y="1361" fill="#182230">exchange_rates</text>
+<text class="badge" x="2249" y="1392" fill="#7b4bd1">PK</text>
+<text class="field" x="1804" y="1392" fill="#182230">exchange_rate_id</text>
+<text class="field" x="2000" y="1392" fill="#526174">uuid</text>
+<line x1="1802" y1="1398" x2="2268" y2="1398" stroke="#eef1f5"/>
+<text class="field" x="1804" y="1415" fill="#182230">base_currency</text>
+<text class="field" x="2000" y="1415" fill="#526174">char(3)</text>
+<line x1="1802" y1="1421" x2="2268" y2="1421" stroke="#eef1f5"/>
+<text class="field" x="1804" y="1438" fill="#182230">quote_currency</text>
+<text class="field" x="2000" y="1438" fill="#526174">char(3)</text>
+<line x1="1802" y1="1444" x2="2268" y2="1444" stroke="#eef1f5"/>
+<text class="field" x="1804" y="1461" fill="#182230">rate_date</text>
+<text class="field" x="2000" y="1461" fill="#526174">date</text>
+<line x1="1802" y1="1467" x2="2268" y2="1467" stroke="#eef1f5"/>
+<text class="field" x="1804" y="1484" fill="#182230">rate</text>
+<text class="field" x="2000" y="1484" fill="#526174">decimal(19,10)</text>
+<line x1="1802" y1="1490" x2="2268" y2="1490" stroke="#eef1f5"/>
+<text class="field" x="1804" y="1507" fill="#182230">provider</text>
+<text class="field" x="2000" y="1507" fill="#526174">text</text>
+<line x1="1802" y1="1513" x2="2268" y2="1513" stroke="#eef1f5"/>
+<text class="field" x="1804" y="1530" fill="#182230">fetched_at</text>
+<text class="field" x="2000" y="1530" fill="#526174">timestamptz</text>
+<rect x="1790" y="1564" width="490" height="180" rx="8" fill="#fff" stroke="#ccd5df" stroke-width="1.2"/>
+<path d="M 1798 1564 H 2272 Q 2280 1564 2280 1572 V 1606 H 1790 V 1572 Q 1790 1564 1798 1564" fill="#edf3f8"/>
+<text class="table" x="1804" y="1591" fill="#182230">transaction_conversions</text>
+<text class="badge" x="2249" y="1622" fill="#197a8a">FK</text>
+<text class="field" x="1804" y="1622" fill="#182230">transaction_id</text>
+<text class="field" x="2000" y="1622" fill="#526174">uuid</text>
+<line x1="1802" y1="1628" x2="2268" y2="1628" stroke="#eef1f5"/>
+<text class="field" x="1804" y="1645" fill="#182230">target_currency</text>
+<text class="field" x="2000" y="1645" fill="#526174">char(3)</text>
+<line x1="1802" y1="1651" x2="2268" y2="1651" stroke="#eef1f5"/>
+<text class="badge" x="2249" y="1668" fill="#197a8a">FK</text>
+<text class="field" x="1804" y="1668" fill="#182230">exchange_rate_id</text>
+<text class="field" x="2000" y="1668" fill="#526174">uuid</text>
+<line x1="1802" y1="1674" x2="2268" y2="1674" stroke="#eef1f5"/>
+<text class="field" x="1804" y="1691" fill="#182230">rate_used</text>
+<text class="field" x="2000" y="1691" fill="#526174">decimal(19,10)</text>
+<line x1="1802" y1="1697" x2="2268" y2="1697" stroke="#eef1f5"/>
+<text class="field" x="1804" y="1714" fill="#182230">converted_amount</text>
+<text class="field" x="2000" y="1714" fill="#526174">decimal(19,4)</text>
+<line x1="1802" y1="1720" x2="2268" y2="1720" stroke="#eef1f5"/>
+<text class="field" x="1804" y="1737" fill="#182230">calculated_at</text>
+<text class="field" x="2000" y="1737" fill="#526174">timestamptz</text>
+<text class="field" x="50" y="1791" fill="#526174">PK — klucz główny · FK — klucz obcy · Linie — relacje zdefiniowane w wymagania.dbml</text>
+</svg>

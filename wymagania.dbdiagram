@@ -1,0 +1,857 @@
+{
+  "version": "2.0.0",
+  "darkMode": true,
+  "gridEnabling": false,
+  "currentViewName": null,
+  "defaultView": {
+    "detailLevel": "All",
+    "relationshipMode": "All",
+    "tablePositions": [
+      {
+        "name": "users",
+        "schemaName": "public",
+        "x": 554.6943359375,
+        "y": 12
+      },
+      {
+        "name": "user_preferences",
+        "schemaName": "public",
+        "x": 12,
+        "y": 12
+      },
+      {
+        "name": "budgets",
+        "schemaName": "public",
+        "x": 1010.70458984375,
+        "y": 12
+      },
+      {
+        "name": "memberships",
+        "schemaName": "public",
+        "x": 1534.71484375,
+        "y": 387
+      },
+      {
+        "name": "invitations",
+        "schemaName": "public",
+        "x": 2143.599609375,
+        "y": 53
+      },
+      {
+        "name": "accounts",
+        "schemaName": "public",
+        "x": 2143.599609375,
+        "y": 355
+      },
+      {
+        "name": "import_batches",
+        "schemaName": "public",
+        "x": 2829.3408203125,
+        "y": 137
+      },
+      {
+        "name": "categories",
+        "schemaName": "public",
+        "x": 2143.599609375,
+        "y": 741
+      },
+      {
+        "name": "categorization_rules",
+        "schemaName": "public",
+        "x": 2829.3408203125,
+        "y": 632
+      },
+      {
+        "name": "transfer_groups",
+        "schemaName": "public",
+        "x": 2143.599609375,
+        "y": 1160
+      },
+      {
+        "name": "transactions",
+        "schemaName": "public",
+        "x": 3509.89404296875,
+        "y": 74
+      },
+      {
+        "name": "split_items",
+        "schemaName": "public",
+        "x": 4095.63525390625,
+        "y": 12
+      },
+      {
+        "name": "account_balance_snapshots",
+        "schemaName": "public",
+        "x": 3509.89404296875,
+        "y": 824
+      },
+      {
+        "name": "exchange_rates",
+        "schemaName": "public",
+        "x": 12,
+        "y": 186
+      },
+      {
+        "name": "transaction_conversions",
+        "schemaName": "public",
+        "x": 4095.63525390625,
+        "y": 346
+      },
+      {
+        "name": "tags",
+        "schemaName": "public",
+        "x": 2143.599609375,
+        "y": 1452
+      },
+      {
+        "name": "transaction_tags",
+        "schemaName": "public",
+        "x": 4095.63525390625,
+        "y": 616
+      },
+      {
+        "name": "local_statement_files",
+        "schemaName": "public",
+        "x": 12,
+        "y": 1662
+      },
+      {
+        "name": "spending_limits",
+        "schemaName": "public",
+        "x": 12,
+        "y": 1968
+      },
+      {
+        "name": "import_profiles",
+        "schemaName": "public",
+        "x": 2829.3408203125,
+        "y": 320
+      },
+      {
+        "name": "import_periods",
+        "schemaName": "public",
+        "x": 2829.3408203125,
+        "y": 500
+      }
+    ],
+    "tableGroupCollapseStates": [],
+    "stickyNoteLayouts": [],
+    "referencePaths": [
+      {
+        "firstFieldNames": [
+          "user_id"
+        ],
+        "firstTableName": "user_preferences",
+        "firstSchemaName": "public",
+        "firstRelation": "1",
+        "secondFieldNames": [
+          "user_id"
+        ],
+        "secondTableName": "users",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "created_by_user_id"
+        ],
+        "firstTableName": "budgets",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "user_id"
+        ],
+        "secondTableName": "users",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "budget_id"
+        ],
+        "firstTableName": "memberships",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "budget_id"
+        ],
+        "secondTableName": "budgets",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "user_id"
+        ],
+        "firstTableName": "memberships",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "user_id"
+        ],
+        "secondTableName": "users",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": [
+          {
+            "x": 959.6781768991349,
+            "y": 499
+          },
+          {
+            "x": 959.6781768991349,
+            "y": 60
+          }
+        ]
+      },
+      {
+        "firstFieldNames": [
+          "budget_id"
+        ],
+        "firstTableName": "invitations",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "budget_id"
+        ],
+        "secondTableName": "budgets",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "invited_by_membership_id"
+        ],
+        "firstTableName": "invitations",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "membership_id"
+        ],
+        "secondTableName": "memberships",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "budget_id"
+        ],
+        "firstTableName": "accounts",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "budget_id"
+        ],
+        "secondTableName": "budgets",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "owner_membership_id"
+        ],
+        "firstTableName": "accounts",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "membership_id"
+        ],
+        "secondTableName": "memberships",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "budget_id"
+        ],
+        "firstTableName": "import_batches",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "budget_id"
+        ],
+        "secondTableName": "budgets",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "account_id"
+        ],
+        "firstTableName": "import_batches",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "account_id"
+        ],
+        "secondTableName": "accounts",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "imported_by_membership_id"
+        ],
+        "firstTableName": "import_batches",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "membership_id"
+        ],
+        "secondTableName": "memberships",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "budget_id"
+        ],
+        "firstTableName": "import_profiles",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "budget_id"
+        ],
+        "secondTableName": "budgets",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "account_id"
+        ],
+        "firstTableName": "import_profiles",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "account_id"
+        ],
+        "secondTableName": "accounts",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "budget_id"
+        ],
+        "firstTableName": "import_periods",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "budget_id"
+        ],
+        "secondTableName": "budgets",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "import_batch_id"
+        ],
+        "firstTableName": "import_periods",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "import_batch_id"
+        ],
+        "secondTableName": "import_batches",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "import_batch_id"
+        ],
+        "firstTableName": "local_statement_files",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "import_batch_id"
+        ],
+        "secondTableName": "import_batches",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "budget_id"
+        ],
+        "firstTableName": "categories",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "budget_id"
+        ],
+        "secondTableName": "budgets",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "parent_category_id"
+        ],
+        "firstTableName": "categories",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "category_id"
+        ],
+        "secondTableName": "categories",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "created_by_membership_id"
+        ],
+        "firstTableName": "categories",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "membership_id"
+        ],
+        "secondTableName": "memberships",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "budget_id"
+        ],
+        "firstTableName": "categorization_rules",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "budget_id"
+        ],
+        "secondTableName": "budgets",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "category_id"
+        ],
+        "firstTableName": "categorization_rules",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "category_id"
+        ],
+        "secondTableName": "categories",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "created_by_membership_id"
+        ],
+        "firstTableName": "categorization_rules",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "membership_id"
+        ],
+        "secondTableName": "memberships",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "budget_id"
+        ],
+        "firstTableName": "transfer_groups",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "budget_id"
+        ],
+        "secondTableName": "budgets",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "created_by_membership_id"
+        ],
+        "firstTableName": "transfer_groups",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "membership_id"
+        ],
+        "secondTableName": "memberships",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "confirmed_by_membership_id"
+        ],
+        "firstTableName": "transfer_groups",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "membership_id"
+        ],
+        "secondTableName": "memberships",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "budget_id"
+        ],
+        "firstTableName": "transactions",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "budget_id"
+        ],
+        "secondTableName": "budgets",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "account_id"
+        ],
+        "firstTableName": "transactions",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "account_id"
+        ],
+        "secondTableName": "accounts",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "import_batch_id"
+        ],
+        "firstTableName": "transactions",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "import_batch_id"
+        ],
+        "secondTableName": "import_batches",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "category_id"
+        ],
+        "firstTableName": "transactions",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "category_id"
+        ],
+        "secondTableName": "categories",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "created_by_membership_id"
+        ],
+        "firstTableName": "transactions",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "membership_id"
+        ],
+        "secondTableName": "memberships",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "hidden_by_membership_id"
+        ],
+        "firstTableName": "transactions",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "membership_id"
+        ],
+        "secondTableName": "memberships",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "transfer_group_id"
+        ],
+        "firstTableName": "transactions",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "transfer_group_id"
+        ],
+        "secondTableName": "transfer_groups",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "budget_id"
+        ],
+        "firstTableName": "split_items",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "budget_id"
+        ],
+        "secondTableName": "budgets",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "transaction_id"
+        ],
+        "firstTableName": "split_items",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "transaction_id"
+        ],
+        "secondTableName": "transactions",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "category_id"
+        ],
+        "firstTableName": "split_items",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "category_id"
+        ],
+        "secondTableName": "categories",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "budget_id"
+        ],
+        "firstTableName": "spending_limits",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "budget_id"
+        ],
+        "secondTableName": "budgets",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "category_id"
+        ],
+        "firstTableName": "spending_limits",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "category_id"
+        ],
+        "secondTableName": "categories",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "created_by_membership_id"
+        ],
+        "firstTableName": "spending_limits",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "membership_id"
+        ],
+        "secondTableName": "memberships",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "account_id"
+        ],
+        "firstTableName": "account_balance_snapshots",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "account_id"
+        ],
+        "secondTableName": "accounts",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "import_batch_id"
+        ],
+        "firstTableName": "account_balance_snapshots",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "import_batch_id"
+        ],
+        "secondTableName": "import_batches",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "created_by_membership_id"
+        ],
+        "firstTableName": "account_balance_snapshots",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "membership_id"
+        ],
+        "secondTableName": "memberships",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "transaction_id"
+        ],
+        "firstTableName": "transaction_conversions",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "transaction_id"
+        ],
+        "secondTableName": "transactions",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "exchange_rate_id"
+        ],
+        "firstTableName": "transaction_conversions",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "exchange_rate_id"
+        ],
+        "secondTableName": "exchange_rates",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "budget_id"
+        ],
+        "firstTableName": "tags",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "budget_id"
+        ],
+        "secondTableName": "budgets",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "created_by_membership_id"
+        ],
+        "firstTableName": "tags",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "membership_id"
+        ],
+        "secondTableName": "memberships",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "transaction_id"
+        ],
+        "firstTableName": "transaction_tags",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "transaction_id"
+        ],
+        "secondTableName": "transactions",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "tag_id"
+        ],
+        "firstTableName": "transaction_tags",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "tag_id"
+        ],
+        "secondTableName": "tags",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      }
+    ]
+  },
+  "views": {}
+}

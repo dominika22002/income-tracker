@@ -1,0 +1,435 @@
+Enum membership_role {
+  ADMIN
+  MEMBER
+}
+
+Enum membership_status {
+  ACTIVE
+  LEFT
+  REMOVED
+}
+
+Enum invitation_status {
+  PENDING
+  ACCEPTED
+  DECLINED
+  EXPIRED
+  CANCELLED
+}
+
+Enum account_type {
+  CHECKING
+  SAVINGS
+  CASH
+  OTHER
+}
+
+Enum transaction_type {
+  EXPENSE
+  INCOME
+  TRANSFER
+}
+
+Enum category_kind {
+  EXPENSE
+  INCOME
+  TRANSFER
+}
+
+Enum expense_nature {
+  FIXED
+  VARIABLE
+  DISCRETIONARY
+}
+
+Enum expense_frequency {
+  RECURRING
+  IRREGULAR
+  ONE_TIME
+}
+
+Enum categorization_rule_source {
+  USER
+  LEARNED
+}
+
+Enum spending_limit_scope {
+  CATEGORY
+  ALL_EXPENSES
+  ONE_TIME_EXPENSES
+}
+
+Enum match_field {
+  DESCRIPTION
+  ACCOUNT
+  AMOUNT
+}
+
+Enum match_operator {
+  CONTAINS
+  EQUALS
+  STARTS_WITH
+}
+
+Enum transfer_status {
+  CANDIDATE
+  CONFIRMED
+  CONFIRMED_UNPAIRED
+  REJECTED
+}
+
+Enum transfer_leg {
+  OUTGOING
+  INCOMING
+}
+
+Enum hidden_mode {
+  DESCRIPTION
+  TRANSACTION
+}
+
+Enum import_format {
+  CSV
+  PDF
+}
+
+Enum import_status {
+  PREVIEW
+  IMPORTED
+  FAILED
+  CANCELLED
+}
+
+Enum balance_source {
+  STATEMENT
+  MANUAL
+}
+
+Enum spending_limit_period {
+  MONTH
+}
+
+Table users {
+  user_id uuid [pk]
+  email varchar
+  display_name varchar
+  created_at timestamptz
+}
+
+Table user_preferences {
+  user_id uuid [pk]
+  primary_currency char(3) [not null]
+  secondary_currencies varchar[] [not null]
+}
+
+Table budgets {
+  budget_id uuid [pk]
+  name varchar [not null]
+  created_at timestamptz [not null]
+  created_by_user_id uuid
+}
+
+Table memberships {
+  membership_id uuid [pk]
+  budget_id uuid [not null]
+  user_id uuid
+  role membership_role [not null]
+  status membership_status [not null]
+  joined_at timestamptz [not null]
+  ended_at timestamptz
+}
+
+Table invitations {
+  invitation_id uuid [pk]
+  budget_id uuid [not null]
+  invited_by_membership_id uuid [not null]
+  invitee_email varchar
+  token_hash char(64) [not null, unique]
+  status invitation_status [not null]
+  created_at timestamptz [not null]
+  expires_at timestamptz [not null]
+}
+
+Table accounts {
+  account_id uuid [pk]
+  budget_id uuid [not null]
+  owner_membership_id uuid [not null]
+  label varchar [not null]
+  institution_name varchar
+  currency char(3) [not null]
+  account_type account_type [not null]
+  created_at timestamptz [not null]
+  archived_at timestamptz
+}
+
+Table import_batches {
+  import_batch_id uuid [pk]
+  budget_id uuid [not null]
+  account_id uuid [not null]
+  imported_by_membership_id uuid [not null]
+  file_sha256 char(64) [not null]
+  source_format import_format [not null]
+  parser_id varchar [not null]
+  parser_version varchar [not null]
+  status import_status [not null]
+  imported_at timestamptz
+  row_count int [not null]
+
+  indexes {
+    (account_id, file_sha256) [unique]
+  }
+
+  Note: 'Dokładne, ciągłe zakresy dat wyciągu są przechowywane w import_periods; import może mieć kilka zakresów rozdzielonych lukami.'
+}
+
+Table import_profiles {
+  import_profile_id uuid [pk]
+  budget_id uuid [not null]
+  account_id uuid [not null]
+  source_format import_format [not null]
+  parser_id varchar [not null]
+  parser_version varchar [not null]
+  mapping_config jsonb [not null]
+  updated_at timestamptz [not null]
+
+  indexes {
+    (budget_id, account_id, source_format, parser_id) [unique]
+  }
+
+  Note: 'Trwałe mapowanie kolumn i opcje parsowania dla konta; nie zawiera pliku źródłowego ani jego treści.'
+}
+
+Table import_periods {
+  import_period_id uuid [pk]
+  budget_id uuid [not null]
+  import_batch_id uuid [not null]
+  period_start date [not null]
+  period_end date [not null]
+
+  indexes {
+    (import_batch_id, period_start, period_end) [unique]
+  }
+
+  Note: 'Każdy rekord opisuje jeden ciągły zakres dat. Luka w pokryciu wymaga osobnego rekordu.'
+}
+
+Table local_statement_files {
+  local_file_id uuid [pk]
+  import_batch_id uuid [not null, unique]
+  original_file_name text [not null]
+  relative_path text [not null]
+  content_hash char(64) [not null]
+  file_size_bytes bigint [not null]
+  stored_at timestamptz [not null]
+  deleted_at timestamptz
+
+  Note: 'Metadane są lokalne. Usunięcie pliku zachowuje rekord importu i zakresy dat.'
+}
+
+Table categories {
+  category_id uuid [pk]
+  budget_id uuid [not null]
+  parent_category_id uuid
+  name varchar [not null]
+  kind category_kind [not null]
+  expense_nature expense_nature
+  created_by_membership_id uuid [not null]
+  archived_at timestamptz
+
+  indexes {
+    (budget_id, parent_category_id, name) [unique]
+  }
+}
+
+Table categorization_rules {
+  rule_id uuid [pk]
+  budget_id uuid [not null]
+  category_id uuid [not null]
+  created_by_membership_id uuid [not null]
+  source categorization_rule_source [not null, note: 'Reguły USER mogą przypisywać kategorię automatycznie; LEARNED są podpowiedziami wymagającymi potwierdzenia.']
+  match_field match_field [not null]
+  operator match_operator [not null]
+  match_value text [not null]
+  priority int [not null]
+  enabled boolean [not null]
+}
+
+Table transfer_groups {
+  transfer_group_id uuid [pk]
+  budget_id uuid [not null]
+  status transfer_status [not null]
+  created_by_membership_id uuid [not null]
+  confirmed_by_membership_id uuid
+  confirmed_at timestamptz
+
+  Note: 'Potwierdzona para wymaga dokładnie jednej transakcji OUTGOING i jednej INCOMING z tego samego budżetu. CONFIRMED_UNPAIRED wymaga jawnego potwierdzenia ostrzeżenia. Opłaty i różnice kwot są osobnymi transakcjami EXPENSE uwzględnianymi w raportach.'
+}
+
+Table transactions {
+  transaction_id uuid [pk]
+  budget_id uuid [not null]
+  account_id uuid [not null]
+  import_batch_id uuid
+  source_row_number int
+  bank_transaction_id varchar
+  normalized_fingerprint char(64)
+  operation_date date [not null]
+  description text [not null]
+  amount decimal(19,4) [not null]
+  currency char(3) [not null]
+  type transaction_type [not null]
+  expense_frequency expense_frequency
+  category_id uuid
+  created_by_membership_id uuid
+  created_at timestamptz [not null]
+  note text
+  hidden_mode hidden_mode
+  hidden_until timestamptz [note: 'NULL przy ustawionym hidden_mode oznacza ukrycie bezterminowe; brak ręcznego ujawniania.']
+  hidden_by_membership_id uuid
+  transfer_group_id uuid
+  transfer_leg transfer_leg
+
+  indexes {
+    (account_id, bank_transaction_id) [unique]
+  }
+}
+
+Table split_items {
+  split_item_id uuid [pk]
+  budget_id uuid [not null]
+  transaction_id uuid [not null]
+  category_id uuid
+  amount decimal(19,4) [not null]
+  expense_frequency expense_frequency
+  description text
+  note text
+  position int [not null]
+
+  Note: 'Pozycje w jednym podziale muszą sumować się dokładnie do kwoty transakcji źródłowej; waluta jest dziedziczona z transakcji. Podział i transakcja muszą należeć do tego samego budżetu.'
+}
+
+Table spending_limits {
+  spending_limit_id uuid [pk]
+  budget_id uuid [not null]
+  limit_scope spending_limit_scope [not null]
+  category_id uuid
+  period spending_limit_period [not null]
+  limit_amount decimal(19,4) [not null]
+  currency char(3) [not null]
+  created_by_membership_id uuid [not null]
+
+  indexes {
+    (budget_id, limit_scope, category_id, period) [unique]
+  }
+}
+
+Table account_balance_snapshots {
+  snapshot_id uuid [pk]
+  account_id uuid [not null]
+  import_batch_id uuid
+  balance_date date [not null]
+  balance_amount decimal(19,4) [not null]
+  currency char(3) [not null]
+  source balance_source [not null]
+  created_by_membership_id uuid [not null]
+  created_at timestamptz [not null]
+
+  indexes {
+    (account_id, balance_date) [unique]
+  }
+}
+
+Table exchange_rates {
+  exchange_rate_id uuid [pk]
+  base_currency char(3) [not null]
+  quote_currency char(3) [not null]
+  rate_date date [not null]
+  rate decimal(19,10) [not null]
+  provider text [not null]
+  fetched_at timestamptz [not null]
+
+  indexes {
+    (base_currency, quote_currency, rate_date, provider) [unique]
+  }
+}
+
+Table transaction_conversions {
+  transaction_id uuid [not null]
+  target_currency char(3) [not null]
+  exchange_rate_id uuid
+  rate_used decimal(19,10) [not null]
+  converted_amount decimal(19,4) [not null]
+  calculated_at timestamptz [not null]
+
+  indexes {
+    (transaction_id, target_currency) [pk]
+  }
+}
+
+Table tags {
+  tag_id uuid [pk]
+  budget_id uuid [not null]
+  name varchar [not null]
+  created_by_membership_id uuid [not null]
+
+  indexes {
+    (budget_id, name) [unique]
+  }
+}
+
+Table transaction_tags {
+  transaction_id uuid [not null]
+  tag_id uuid [not null]
+
+  indexes {
+    (transaction_id, tag_id) [pk]
+  }
+}
+
+Ref: user_preferences.user_id - users.user_id
+Ref: budgets.created_by_user_id > users.user_id
+Ref: memberships.budget_id > budgets.budget_id
+Ref: memberships.user_id > users.user_id
+Ref: invitations.budget_id > budgets.budget_id
+Ref: invitations.invited_by_membership_id > memberships.membership_id
+Ref: accounts.budget_id > budgets.budget_id
+Ref: accounts.owner_membership_id > memberships.membership_id
+Ref: import_batches.budget_id > budgets.budget_id
+Ref: import_batches.account_id > accounts.account_id
+Ref: import_batches.imported_by_membership_id > memberships.membership_id
+Ref: import_profiles.budget_id > budgets.budget_id
+Ref: import_profiles.account_id > accounts.account_id
+Ref: import_periods.budget_id > budgets.budget_id
+Ref: import_periods.import_batch_id > import_batches.import_batch_id
+Ref: local_statement_files.import_batch_id > import_batches.import_batch_id
+Ref: categories.budget_id > budgets.budget_id
+Ref: categories.parent_category_id > categories.category_id
+Ref: categories.created_by_membership_id > memberships.membership_id
+Ref: categorization_rules.budget_id > budgets.budget_id
+Ref: categorization_rules.category_id > categories.category_id
+Ref: categorization_rules.created_by_membership_id > memberships.membership_id
+Ref: transfer_groups.budget_id > budgets.budget_id
+Ref: transfer_groups.created_by_membership_id > memberships.membership_id
+Ref: transfer_groups.confirmed_by_membership_id > memberships.membership_id
+Ref: transactions.budget_id > budgets.budget_id
+Ref: transactions.account_id > accounts.account_id
+Ref: transactions.import_batch_id > import_batches.import_batch_id
+Ref: transactions.category_id > categories.category_id
+Ref: transactions.created_by_membership_id > memberships.membership_id
+Ref: transactions.hidden_by_membership_id > memberships.membership_id
+Ref: transactions.transfer_group_id > transfer_groups.transfer_group_id
+Ref: split_items.budget_id > budgets.budget_id
+Ref: split_items.transaction_id > transactions.transaction_id
+Ref: split_items.category_id > categories.category_id
+Ref: spending_limits.budget_id > budgets.budget_id
+Ref: spending_limits.category_id > categories.category_id
+Ref: spending_limits.created_by_membership_id > memberships.membership_id
+Ref: account_balance_snapshots.account_id > accounts.account_id
+Ref: account_balance_snapshots.import_batch_id > import_batches.import_batch_id
+Ref: account_balance_snapshots.created_by_membership_id > memberships.membership_id
+Ref: transaction_conversions.transaction_id > transactions.transaction_id
+Ref: transaction_conversions.exchange_rate_id > exchange_rates.exchange_rate_id
+Ref: tags.budget_id > budgets.budget_id
+Ref: tags.created_by_membership_id > memberships.membership_id
+Ref: transaction_tags.transaction_id > transactions.transaction_id
+Ref: transaction_tags.tag_id > tags.tag_id
