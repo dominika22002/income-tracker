@@ -18,6 +18,10 @@ import {
   type ConversionRates,
   type ReportPeriod,
 } from '../../../../shared/domain/reporting';
+import {
+  isHiddenFromViewer,
+  maskTransactionsForMember,
+} from '../../../../shared/domain/transactionFeatures';
 import type { AppServices } from '../../backend/ports';
 import { describeError } from './errorMessages';
 
@@ -38,6 +42,11 @@ function monthPeriod(month: string): ReportPeriod {
     start: `${month}-01`,
     end: new Date(Date.UTC(year, value, 0)).toISOString().slice(0, 10),
   };
+}
+
+function isValidMonth(month: string): boolean {
+  const match = /^(\d{4})-(\d{2})$/.exec(month);
+  return Boolean(match && Number(match[2]) >= 1 && Number(match[2]) <= 12);
 }
 
 function previousMonth(month: string): string {
@@ -137,6 +146,11 @@ export function ReportsWorkspace({
   const [periodEnd, setPeriodEnd] = useState(() =>
     new Date().toISOString().slice(0, 10),
   );
+  const [pdfStartMonth, setPdfStartMonth] = useState(currentMonth);
+  const [pdfEndMonth, setPdfEndMonth] = useState(currentMonth);
+  const [exportingPdf, setExportingPdf] = useState(false);
+  const [pdfExportError, setPdfExportError] = useState<string | null>(null);
+  const [pdfExportNotice, setPdfExportNotice] = useState<string | null>(null);
   const [comparisonMonth, setComparisonMonth] = useState(() =>
     previousMonth(currentMonth()),
   );
@@ -243,6 +257,18 @@ export function ReportsWorkspace({
   const limitPeriod = /^\d{4}-\d{2}$/.test(limitMonth)
     ? monthPeriod(limitMonth)
     : null;
+  const pdfPeriod = useMemo(
+    () =>
+      isValidMonth(pdfStartMonth) &&
+      isValidMonth(pdfEndMonth) &&
+      pdfStartMonth <= pdfEndMonth
+        ? {
+            start: monthPeriod(pdfStartMonth).start,
+            end: monthPeriod(pdfEndMonth).end,
+          }
+        : null,
+    [pdfEndMonth, pdfStartMonth],
+  );
   const period = useMemo(
     () => periodFromInputs(periodStart, periodEnd),
     [periodEnd, periodStart],
@@ -250,6 +276,7 @@ export function ReportsWorkspace({
   const relevantPeriods = [
     period,
     comparisonPeriod,
+    ...(pdfPeriod ? [pdfPeriod] : []),
     ...(estimatePeriod ? [estimatePeriod] : []),
     ...(limitPeriod ? [limitPeriod] : []),
   ];
@@ -383,6 +410,30 @@ export function ReportsWorkspace({
     ratesByTarget,
     transactions,
   ]);
+  const reportNow = new Date();
+  const viewerMembershipId = budget?.membership_id ?? '';
+  const pdfReport =
+    !primaryCurrency || missingConversion || !pdfPeriod
+      ? null
+      : {
+          ...aggregateReport(
+            maskTransactionsForMember(
+              transactions,
+              viewerMembershipId,
+              reportNow,
+            ),
+            categories,
+            pdfPeriod,
+            primaryCurrency,
+            ratesByTarget[primaryCurrency] ?? {},
+          ),
+          hidden_transactions_included: transactions.some(
+            (transaction) =>
+              transaction.operation_date >= pdfPeriod.start &&
+              transaction.operation_date <= pdfPeriod.end &&
+              isHiddenFromViewer(transaction, viewerMembershipId, reportNow),
+          ),
+        };
   const comparison = useMemo(() => {
     if (
       !primaryCurrency ||
@@ -477,6 +528,35 @@ export function ReportsWorkspace({
     }
   }
 
+  async function exportPdfReport() {
+    if (!pdfReport) {
+      setPdfExportError('Wybierz prawidłowy zakres pełnych miesięcy raportu.');
+      return;
+    }
+    setExportingPdf(true);
+    setPdfExportError(null);
+    setPdfExportNotice(null);
+    try {
+      const result = await window.electronApi.saveReportPdf({
+        fileName: `raport-${pdfStartMonth}-${pdfEndMonth}`,
+        report: pdfReport,
+      });
+      if (result.status === 'saved') {
+        setPdfExportNotice(`Raport zapisano: ${result.filePath}`);
+      } else if (result.status === 'canceled') {
+        setPdfExportNotice(
+          'Anulowano wybór lokalizacji; plik nie został utworzony.',
+        );
+      } else {
+        setPdfExportError(result.error);
+      }
+    } catch (failure) {
+      setPdfExportError(describeError(failure));
+    } finally {
+      setExportingPdf(false);
+    }
+  }
+
   return (
     <section
       className="dashboard-card reporting-workspace"
@@ -546,6 +626,45 @@ export function ReportsWorkspace({
                     />
                   </label>
                 </div>
+                <section aria-label="Eksport raportu PDF">
+                  <h3>Eksport raportu do PDF</h3>
+                  <div className="transaction-form">
+                    <label>
+                      Miesiąc początkowy PDF
+                      <input
+                        aria-label="Miesiąc początkowy PDF"
+                        type="month"
+                        value={pdfStartMonth}
+                        onChange={(event) =>
+                          setPdfStartMonth(event.target.value)
+                        }
+                      />
+                    </label>
+                    <label>
+                      Miesiąc końcowy PDF
+                      <input
+                        aria-label="Miesiąc końcowy PDF"
+                        type="month"
+                        value={pdfEndMonth}
+                        onChange={(event) => setPdfEndMonth(event.target.value)}
+                      />
+                    </label>
+                  </div>
+                  <p>
+                    Zakres: {pdfPeriod?.start ?? '—'} – {pdfPeriod?.end ?? '—'}
+                    {primaryCurrency ? ` · ${primaryCurrency}` : ''}
+                  </p>
+                  {pdfExportError && <p role="alert">{pdfExportError}</p>}
+                  {pdfExportNotice && <p role="status">{pdfExportNotice}</p>}
+                  <button
+                    type="button"
+                    className="button-secondary"
+                    disabled={!pdfReport || exportingPdf}
+                    onClick={() => void exportPdfReport()}
+                  >
+                    {exportingPdf ? 'Tworzenie PDF…' : 'Eksportuj raport PDF'}
+                  </button>
+                </section>
                 {currentReport && (
                   <>
                     <p>

@@ -213,11 +213,23 @@ describe('transaction split and hiding domain (U-FR-30…34, U-FR-50…54, U-TR-
     const all = [hiddenDescription, hiddenRow];
     const now = new Date('2026-03-01T10:00:00Z');
     const exported = transactionLinesForExport(all, OTHER, now);
-    expect(exported).toHaveLength(2);
-    expect(exported.map((line) => line.amount)).toEqual(['35.1250', '64.8750']);
-    expect(exported.every((line) => line.description === 'Opis ukryty')).toBe(
-      true,
-    );
+    expect(exported).toHaveLength(3);
+    expect(exported.slice(0, 2).map((line) => line.amount)).toEqual([
+      '35.1250',
+      '64.8750',
+    ]);
+    expect(
+      exported.slice(0, 2).every((line) => line.description === 'Opis ukryty'),
+    ).toBe(true);
+    expect(exported[2]).toMatchObject({
+      amount: '',
+      currency: '',
+      category_id: null,
+      category_name: null,
+      operation_date: '',
+      description: 'Transakcja ukryta',
+      hidden: true,
+    });
     expect(JSON.stringify(exported)).not.toContain('Synthetic confidential');
     expect(transactionLinesForReporting(all)).toHaveLength(4);
   });

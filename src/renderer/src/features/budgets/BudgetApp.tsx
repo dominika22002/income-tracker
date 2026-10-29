@@ -566,6 +566,7 @@ function RoutedBudgetView({
           budgets={budgets}
           selectedBudgetId={selected?.budget_id}
           onSelectBudget={onSelectBudget}
+          preferences={preferences}
         />
       )}
 

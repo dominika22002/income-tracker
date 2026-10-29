@@ -20,6 +20,8 @@ import { StatementCsvPreview } from '../../src/renderer/src/features/imports/Sta
 function mockApi(): IpcApi {
   return {
     ping: vi.fn().mockResolvedValue({ ok: true, message: 'ok' }),
+    saveExportFile: vi.fn().mockResolvedValue({ status: 'canceled' }),
+    saveReportPdf: vi.fn().mockResolvedValue({ status: 'canceled' }),
     selectLocalFile: vi.fn().mockResolvedValue({
       canceled: false,
       filePath: 'C:\\local\\synthetic.csv',

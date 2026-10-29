@@ -3,6 +3,9 @@ import type { IpcApi, OAuthCallbackPayload } from '../shared/contracts';
 
 const api: IpcApi = {
   ping: () => ipcRenderer.invoke('app:ping'),
+  saveExportFile: (request) => ipcRenderer.invoke('export:saveFile', request),
+  saveReportPdf: (request) =>
+    ipcRenderer.invoke('export:saveReportPdf', request),
   selectLocalFile: () => ipcRenderer.invoke('file:select'),
   readLocalStatement: (request) =>
     ipcRenderer.invoke('file:readStatement', request),

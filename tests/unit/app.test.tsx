@@ -7,6 +7,8 @@ import type { IpcApi, OAuthCallbackPayload } from '../../src/shared/contracts';
 function mockApi(): IpcApi {
   return {
     ping: vi.fn().mockResolvedValue({ ok: true, message: 'ok' }),
+    saveExportFile: vi.fn().mockResolvedValue({ status: 'canceled' }),
+    saveReportPdf: vi.fn().mockResolvedValue({ status: 'canceled' }),
     selectLocalFile: vi.fn().mockResolvedValue({ canceled: true }),
     readLocalStatement: vi.fn().mockResolvedValue({ success: false }),
     writeTestFile: vi

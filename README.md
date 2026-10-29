@@ -84,6 +84,16 @@ npm run test:functions  # callable functions on Auth/Firestore/Functions emulato
 
 Run unit, rules/integration and UI tests with `npm run test:unit`, `npm run test:rules` and `npm run test:e2e`.
 
+## Stage 7: data and report exports
+
+- The transaction workspace exports the whole budget, a selected date range, or the currently applied transaction filters to CSV or XLSX. Split transactions export their component rows instead of the source total.
+- Configuration JSON contains personal currency settings and the selected budget's currencies, categories, and categorization rules. It is assembled from an explicit allowlist and excludes transactions and authentication data.
+- The reports workspace exports a PDF for selected full months. It uses the shared Stage 6 `aggregateReport` calculation and includes income/expense and category charts in the report currency.
+- Exports are written through the typed preload API and Electron main-process save dialog. Writes use a temporary file followed by an atomic rename; cancel and write failures are reported without a success notice.
+- Hidden transaction details are redacted in data exports; PDF summaries include a generic hidden-data notice and group hidden amounts without exposing their categories.
+
+Run the export checks with `npm run test:unit`, `npm run test -- --project integration tests/integration/exports.test.ts`, and `npm run test:e2e`.
+
 ## Prerequisites
 
 - Node.js 24+

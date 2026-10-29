@@ -11,7 +11,15 @@ import type {
   StatementTransactionType,
   TransactionView,
   TransferGroupView,
+  UserPreferencesRecord,
 } from '../../../../shared/contracts';
+import {
+  bytesToBase64,
+  configurationToJson,
+  transactionExportRows,
+  transactionRowsToCsv,
+  transactionRowsToXlsx,
+} from '../../../../shared/domain/exports';
 import {
   filterAndSortTransactions,
   recordLocalCorrection,
@@ -101,11 +109,13 @@ export function TransactionsWorkspace({
   budgets,
   selectedBudgetId,
   onSelectBudget,
+  preferences,
 }: {
   services: AppServices;
   budgets: MyBudgetView[] | null;
   selectedBudgetId?: string;
   onSelectBudget: (budgetId: string) => void;
+  preferences: UserPreferencesRecord | null;
 }) {
   const budgetId =
     (selectedBudgetId &&
@@ -123,6 +133,18 @@ export function TransactionsWorkspace({
   const [transactionsSnapshot, setTransactionsSnapshot] = useState<{
     budgetId: string;
     values: TransactionView[];
+  } | null>(null);
+  const [accountsSnapshot, setAccountsSnapshot] = useState<{
+    budgetId: string;
+    values: AccountView[];
+  } | null>(null);
+  const [categoriesSnapshot, setCategoriesSnapshot] = useState<{
+    budgetId: string;
+    values: CategoryView[];
+  } | null>(null);
+  const [rulesSnapshot, setRulesSnapshot] = useState<{
+    budgetId: string;
+    values: CategorizationRuleView[];
   } | null>(null);
   const [accounts, setAccounts] = useState<AccountView[]>([]);
   const [categories, setCategories] = useState<CategoryView[]>([]);
@@ -181,6 +203,12 @@ export function TransactionsWorkspace({
   const [ruleValue, setRuleValue] = useState('');
   const [ruleCategoryId, setRuleCategoryId] = useState('');
   const [rulePriority, setRulePriority] = useState('0');
+  const [exportScope, setExportScope] = useState<
+    'FILTERS' | 'BUDGET' | 'DATES'
+  >('FILTERS');
+  const [exportDateFrom, setExportDateFrom] = useState('');
+  const [exportDateTo, setExportDateTo] = useState('');
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     if (!budgetId) return undefined;
@@ -196,17 +224,26 @@ export function TransactionsWorkspace({
     if (!budgetId) return undefined;
     const unsubscribeAccounts = services.data.subscribeBudgetAccounts(
       budgetId,
-      setAccounts,
+      (values) => {
+        setAccounts(values);
+        setAccountsSnapshot({ budgetId, values });
+      },
       (failure) => setError(describeError(failure)),
     );
     const unsubscribeCategories = services.data.subscribeCategories(
       budgetId,
-      setCategories,
+      (values) => {
+        setCategories(values);
+        setCategoriesSnapshot({ budgetId, values });
+      },
       (failure) => setError(describeError(failure)),
     );
     const unsubscribeRules = services.data.subscribeCategorizationRules(
       budgetId,
-      setRules,
+      (values) => {
+        setRules(values);
+        setRulesSnapshot({ budgetId, values });
+      },
       (failure) => setError(describeError(failure)),
     );
     const unsubscribeTransferGroups = services.data.subscribeTransferGroups(
@@ -271,6 +308,108 @@ export function TransactionsWorkspace({
   const currentBudget = budgets?.find(
     (budget) => budget.budget_id === budgetId,
   );
+  const exportDataReady =
+    transactions !== null &&
+    accountsSnapshot?.budgetId === budgetId &&
+    categoriesSnapshot?.budgetId === budgetId &&
+    rulesSnapshot?.budgetId === budgetId;
+
+  function filtersForExport(): TransactionFilters | null {
+    if (exportScope === 'BUDGET') return {};
+    if (exportScope === 'FILTERS') return filters;
+    if (!exportDateFrom || !exportDateTo || exportDateFrom > exportDateTo) {
+      setError('Wybierz prawidłowy zakres dat eksportu.');
+      return null;
+    }
+    return { dateFrom: exportDateFrom, dateTo: exportDateTo };
+  }
+
+  function handleExportResult(
+    result: Awaited<ReturnType<typeof window.electronApi.saveExportFile>>,
+  ) {
+    if (result.status === 'saved') {
+      setNotice(`Plik zapisano: ${result.filePath}`);
+    } else if (result.status === 'canceled') {
+      setNotice('Anulowano wybór lokalizacji; plik nie został utworzony.');
+    } else {
+      setError(result.error);
+    }
+  }
+
+  async function exportTransactions(format: 'CSV' | 'XLSX') {
+    if (!transactions || !budgetId || !exportDataReady) {
+      setError('Dane eksportu nie są jeszcze gotowe.');
+      return;
+    }
+    const selectedFilters = filtersForExport();
+    if (!selectedFilters) return;
+    setExporting(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const rows = transactionExportRows(
+        transactions,
+        categoriesSnapshot.values,
+        viewerMembershipId,
+        new Date(),
+        { filters: selectedFilters, sort },
+      );
+      const content =
+        format === 'CSV'
+          ? new TextEncoder().encode(transactionRowsToCsv(rows))
+          : await transactionRowsToXlsx(rows);
+      handleExportResult(
+        await window.electronApi.saveExportFile({
+          fileName: `transakcje-${new Date().toISOString().slice(0, 10)}`,
+          format,
+          contentBase64: bytesToBase64(content),
+        }),
+      );
+    } catch (failure) {
+      setError(describeError(failure));
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  async function exportConfiguration() {
+    if (
+      !preferences ||
+      !currentBudget ||
+      !exportDataReady ||
+      accountsSnapshot?.budgetId !== budgetId ||
+      categoriesSnapshot?.budgetId !== budgetId ||
+      rulesSnapshot?.budgetId !== budgetId
+    ) {
+      setError('Konfiguracja eksportu nie jest jeszcze gotowa.');
+      return;
+    }
+    setExporting(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const content = new TextEncoder().encode(
+        configurationToJson(
+          preferences,
+          currentBudget.name,
+          accountsSnapshot.values,
+          categoriesSnapshot.values,
+          rulesSnapshot.values,
+        ),
+      );
+      handleExportResult(
+        await window.electronApi.saveExportFile({
+          fileName: `konfiguracja-${new Date().toISOString().slice(0, 10)}`,
+          format: 'JSON',
+          contentBase64: bytesToBase64(content),
+        }),
+      );
+    } catch (failure) {
+      setError(describeError(failure));
+    } finally {
+      setExporting(false);
+    }
+  }
 
   async function loadConversions(transaction: TransactionView) {
     setConvertingId(transaction.transaction_id);
@@ -831,6 +970,82 @@ export function TransactionsWorkspace({
                   Wyczyść filtry
                 </button>
               </div>
+              <section className="export-controls" aria-label="Eksport danych">
+                <h4>Eksport danych</h4>
+                <label>
+                  Zakres eksportu transakcji
+                  <select
+                    aria-label="Zakres eksportu transakcji"
+                    value={exportScope}
+                    onChange={(event) =>
+                      setExportScope(event.target.value as typeof exportScope)
+                    }
+                  >
+                    <option value="FILTERS">
+                      Aktualnie zastosowane filtry
+                    </option>
+                    <option value="BUDGET">Cały budżet</option>
+                    <option value="DATES">Wybrany zakres dat</option>
+                  </select>
+                </label>
+                {exportScope === 'DATES' && (
+                  <div className="transaction-form">
+                    <label>
+                      Od daty eksportu
+                      <input
+                        aria-label="Od daty eksportu"
+                        type="date"
+                        value={exportDateFrom}
+                        onChange={(event) =>
+                          setExportDateFrom(event.target.value)
+                        }
+                      />
+                    </label>
+                    <label>
+                      Do daty eksportu
+                      <input
+                        aria-label="Do daty eksportu"
+                        type="date"
+                        value={exportDateTo}
+                        onChange={(event) =>
+                          setExportDateTo(event.target.value)
+                        }
+                      />
+                    </label>
+                  </div>
+                )}
+                <div className="workspace-toolbar">
+                  <button
+                    type="button"
+                    className="button-secondary"
+                    disabled={!exportDataReady || exporting}
+                    onClick={() => void exportTransactions('CSV')}
+                  >
+                    Eksportuj transakcje CSV
+                  </button>
+                  <button
+                    type="button"
+                    className="button-secondary"
+                    disabled={!exportDataReady || exporting}
+                    onClick={() => void exportTransactions('XLSX')}
+                  >
+                    Eksportuj transakcje XLSX
+                  </button>
+                  <button
+                    type="button"
+                    className="button-secondary"
+                    disabled={
+                      !preferences ||
+                      !currentBudget ||
+                      !exportDataReady ||
+                      exporting
+                    }
+                    onClick={() => void exportConfiguration()}
+                  >
+                    Eksportuj konfigurację JSON
+                  </button>
+                </div>
+              </section>
               {transactions === null ? (
                 <p role="status">Ładowanie transakcji…</p>
               ) : transactions.length === 0 ? (

@@ -11,6 +11,16 @@ import {
   createOAuthState,
   parseOAuthCallbackUrl,
 } from './oauth';
+import { createReportPdf } from './exportPdf';
+import {
+  decodeExportContent,
+  describeExportError,
+  ensureExportExtension,
+  exportExtension,
+  exportFileName,
+  validatePdfReport,
+  writeExportAtomically,
+} from './exportFiles';
 import {
   MAX_LOCAL_STATEMENT_BYTES,
   validateReadLocalStatementRequest,
@@ -22,6 +32,8 @@ const IPC_CHANNELS = {
   selectFile: 'file:select',
   readStatement: 'file:readStatement',
   writeTestFile: 'file:writeTest',
+  saveExportFile: 'export:saveFile',
+  saveReportPdf: 'export:saveReportPdf',
   startOAuth: 'oauth:start',
   oauthCallback: 'oauth:callback',
 } as const;
@@ -34,6 +46,92 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
     ok: true as const,
     message: 'Electron main process is reachable.',
   }));
+
+  ipcMain.handle(
+    IPC_CHANNELS.saveExportFile,
+    async (_event, payload: unknown) => {
+      if (!payload || typeof payload !== 'object') {
+        return { status: 'error', error: 'Nieprawidłowe dane eksportu.' };
+      }
+      const request = payload as Record<string, unknown>;
+      if (
+        typeof request.fileName !== 'string' ||
+        (request.format !== 'CSV' &&
+          request.format !== 'XLSX' &&
+          request.format !== 'JSON') ||
+        typeof request.contentBase64 !== 'string'
+      ) {
+        return { status: 'error', error: 'Nieprawidłowe dane eksportu.' };
+      }
+      const extension = exportExtension(request.format);
+      const fileName = exportFileName(request.fileName, extension);
+      const content = decodeExportContent(request.contentBase64);
+      if (!fileName || !content) {
+        return {
+          status: 'error',
+          error: 'Nieprawidłowa nazwa lub zawartość pliku.',
+        };
+      }
+      try {
+        const selected = await dialog.showSaveDialog(mainWindow, {
+          title: 'Zapisz eksport',
+          buttonLabel: 'Zapisz',
+          defaultPath: fileName,
+          filters: [
+            { name: `${request.format} files`, extensions: [extension] },
+          ],
+        });
+        if (selected.canceled || !selected.filePath) {
+          return { status: 'canceled' };
+        }
+        const filePath = ensureExportExtension(selected.filePath, extension);
+        await writeExportAtomically(filePath, content);
+        return { status: 'saved', filePath };
+      } catch (failure) {
+        return { status: 'error', error: describeExportError(failure) };
+      }
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.saveReportPdf,
+    async (_event, payload: unknown) => {
+      if (!payload || typeof payload !== 'object') {
+        return { status: 'error', error: 'Nieprawidłowe dane raportu PDF.' };
+      }
+      const request = payload as Record<string, unknown>;
+      if (
+        typeof request.fileName !== 'string' ||
+        !validatePdfReport(request.report)
+      ) {
+        return { status: 'error', error: 'Nieprawidłowe dane raportu PDF.' };
+      }
+      const fileName = exportFileName(request.fileName, 'pdf');
+      if (!fileName) {
+        return { status: 'error', error: 'Nieprawidłowa nazwa pliku PDF.' };
+      }
+      try {
+        const selected = await dialog.showSaveDialog(mainWindow, {
+          title: 'Zapisz raport PDF',
+          buttonLabel: 'Zapisz',
+          defaultPath: fileName,
+          filters: [{ name: 'PDF', extensions: ['pdf'] }],
+        });
+        if (selected.canceled || !selected.filePath) {
+          return { status: 'canceled' };
+        }
+        const filePath = ensureExportExtension(selected.filePath, 'pdf');
+        const content = await createReportPdf({
+          fileName,
+          report: request.report,
+        });
+        await writeExportAtomically(filePath, content);
+        return { status: 'saved', filePath };
+      } catch (failure) {
+        return { status: 'error', error: describeExportError(failure) };
+      }
+    },
+  );
 
   ipcMain.handle(IPC_CHANNELS.selectFile, async () => {
     const result = await dialog.showOpenDialog(mainWindow, {

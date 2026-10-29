@@ -1,5 +1,7 @@
 export interface IpcApi {
   ping(): Promise<{ ok: true; message: string }>;
+  saveExportFile(request: SaveExportFileRequest): Promise<ExportFileResult>;
+  saveReportPdf(request: SaveReportPdfRequest): Promise<ExportFileResult>;
   selectLocalFile(): Promise<{
     canceled: boolean;
     filePath?: string;
@@ -22,6 +24,30 @@ export interface IpcApi {
     listener: (payload: OAuthCallbackPayload) => void,
   ): () => void;
 }
+
+export interface SaveExportFileRequest {
+  fileName: string;
+  format: 'CSV' | 'XLSX' | 'JSON';
+  contentBase64: string;
+}
+
+export interface SaveReportPdfRequest {
+  fileName: string;
+  report: {
+    period: { start: string; end: string };
+    currency: string;
+    income: string;
+    expenses: string;
+    cash_flow: string;
+    hidden_transactions_included: boolean;
+    expenses_by_category: Array<{ category_name: string; amount: string }>;
+  };
+}
+
+export type ExportFileResult =
+  | { status: 'saved'; filePath: string }
+  | { status: 'canceled' }
+  | { status: 'error'; error: string };
 
 export interface OAuthCallbackPayload {
   ok: boolean;

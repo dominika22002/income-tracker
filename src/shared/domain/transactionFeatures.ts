@@ -1,4 +1,5 @@
 import type {
+  CategoryView,
   ExpenseFrequency,
   SplitItemInput,
   SplitItemView,
@@ -233,9 +234,11 @@ export interface ReportTransactionLine {
 
 export interface TransactionExportLine extends ReportTransactionLine {
   operation_date: string;
-  type: TransactionView['type'];
+  type: TransactionView['type'] | null;
   description: string;
   note: string | null;
+  category_name: string | null;
+  hidden: boolean;
 }
 
 export function transactionLinesForReporting(
@@ -270,12 +273,32 @@ export function transactionLinesForExport(
   transactions: readonly TransactionView[],
   viewerMembershipId: string,
   now: Date,
+  categories: readonly CategoryView[] = [],
 ): TransactionExportLine[] {
-  return transactionsVisibleToMember(
-    transactions,
-    viewerMembershipId,
-    now,
-  ).flatMap<TransactionExportLine>((transaction) => {
+  const categoriesById = new Map(
+    categories.map((category) => [category.category_id, category.name]),
+  );
+  return transactions.flatMap<TransactionExportLine>((transaction) => {
+    const hidden = isHiddenFromViewer(transaction, viewerMembershipId, now);
+    if (hidden && transaction.hidden_mode === 'TRANSACTION') {
+      return [
+        {
+          transaction_id: transaction.transaction_id,
+          split_item_id: null,
+          operation_date: '',
+          type: null,
+          amount: '',
+          currency: '',
+          category_id: null,
+          category_name: null,
+          expense_frequency: null,
+          description: 'Transakcja ukryta',
+          note: null,
+          hidden: true,
+        },
+      ];
+    }
+
     const items = transaction.split_items ?? [];
     if (items.length === 0) {
       return [
@@ -287,9 +310,14 @@ export function transactionLinesForExport(
           amount: transaction.amount,
           currency: transaction.currency,
           category_id: transaction.category_id,
+          category_name: transaction.category_id
+            ? (categoriesById.get(transaction.category_id) ??
+              transaction.category_name)
+            : null,
           expense_frequency: transaction.expense_frequency ?? null,
-          description: transaction.description,
-          note: transaction.note,
+          description: hidden ? 'Opis ukryty' : transaction.description,
+          note: hidden ? null : transaction.note,
+          hidden,
         },
       ];
     }
@@ -301,12 +329,18 @@ export function transactionLinesForExport(
       amount: item.amount,
       currency: transaction.currency,
       category_id: item.category_id,
+      category_name: item.category_id
+        ? (categoriesById.get(item.category_id) ??
+          (item.category_id === transaction.category_id
+            ? transaction.category_name
+            : null))
+        : null,
       expense_frequency: item.expense_frequency,
-      description:
-        transaction.hidden_for_viewer === true
-          ? 'Opis ukryty'
-          : (item.description ?? transaction.description),
-      note: transaction.hidden_for_viewer === true ? null : item.note,
+      description: hidden
+        ? 'Opis ukryty'
+        : (item.description ?? transaction.description),
+      note: hidden ? null : item.note,
+      hidden,
     }));
   });
 }

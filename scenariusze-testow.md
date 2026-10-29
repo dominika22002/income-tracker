@@ -245,7 +245,7 @@ This table describes coverage, not execution status. Suggestions are device-loca
 | E-FR-30–E-FR-34          | `tests/e2e/transactions.e2e.test.tsx` (split editor and source currency)                                                          | `npm run test:e2e`   |
 | E-FR-50–E-FR-54          | `tests/e2e/transactions.e2e.test.tsx` (author visibility, hidden row/search and expiry notice for another member)                 | `npm run test:e2e`   |
 
-This mapping describes coverage, not execution status. Export projection tests cover the shared row data used by a future file exporter; Stage 6 report aggregation coverage is listed below.
+This mapping describes coverage, not execution status. The shared export projection is consumed by the Stage 7 CSV/XLSX file exporters; their format and visibility coverage is listed below.
 
 ## Stage 5 implementation mapping (currencies, transfers and balances)
 
@@ -268,5 +268,13 @@ TR-20/TR-21 production cost measurement and alerting are not represented as impl
 | U-FR-43–U-FR-49 | `tests/unit/reporting.test.ts` (inclusive periods, empty periods, categories, per-transaction FX, splits, masked hidden transactions, transfers, limits, estimate and balances) | `npm run test:unit`  |
 | I-FR-43–I-FR-49 | `tests/integration/stage6.test.ts`, `tests/rules/firestore.rules.test.ts` (saved classifications, limits and requested report-currency conversions; member-only reads)          | `npm run test:rules` |
 | E-FR-43–E-FR-49 | `tests/e2e/stage6.e2e.test.tsx` (chosen date range, hidden expenses, confirmed transfers, limit usage and estimated versus saved savings balances)                              | `npm run test:e2e`   |
+
+## Stage 7 implementation mapping (data and report exports)
+
+| Scenario IDs    | Implemented test file(s)                                                                                                                                              | Command                                                                   |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| U-FR-55–U-FR-59 | `tests/unit/exports.test.ts`, `tests/unit/transactionFeatures.test.ts` (CSV/XLSX rows, filters, split rows, hidden-data redaction, and JSON allowlist)                | `npm run test:unit`                                                       |
+| I-FR-55–I-FR-63 | `tests/integration/exports.test.ts` (read generated CSV/JSON, reopen XLSX, extract PDF text/metadata, atomic write failure, full-month boundaries and storage errors) | `npm run test -- --project integration tests/integration/exports.test.ts` |
+| E-FR-55–E-FR-63 | `tests/e2e/stage7.e2e.test.tsx` (all four export flows, selected path, filters/date range, hidden transactions, split rows, cancellation and write errors)            | `npm run test:e2e`                                                        |
 
 `src/shared/domain/reporting.ts` is the shared source for report totals, category comparisons, monthly limit usage, historical estimates and savings-account snapshots. Hidden amounts remain in aggregate totals while access-controlled details are masked before the shared calculations.
