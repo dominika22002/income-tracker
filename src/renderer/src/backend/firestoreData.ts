@@ -20,6 +20,10 @@ import type {
   UserPreferencesRecord,
 } from '../../../shared/contracts';
 import { compareMembersForSuccession } from '../../../shared/domain/membership';
+import {
+  maskTransactionsForMember,
+  nextHiddenExpiry,
+} from '../../../shared/domain/transactionFeatures';
 import type { BudgetDataSource } from './ports';
 
 function iso(value: unknown): string {
@@ -102,9 +106,34 @@ export function createFirestoreDataSource(db: Firestore): BudgetDataSource {
       );
     },
 
-    subscribeTransactions(budgetId, onData, onError) {
+    subscribeTransactions(budgetId, viewerMembershipId, onData, onError) {
       let active = true;
       let revision = 0;
+      let expiryTimer: ReturnType<typeof setTimeout> | undefined;
+      let latestTransactions: TransactionView[] = [];
+      const publishForViewer = () => {
+        if (!active) return;
+        const now = new Date();
+        onData(
+          maskTransactionsForMember(
+            latestTransactions,
+            viewerMembershipId,
+            now,
+          ),
+        );
+        if (expiryTimer) clearTimeout(expiryTimer);
+        const nextExpiry = nextHiddenExpiry(
+          latestTransactions,
+          viewerMembershipId,
+          now,
+        );
+        if (nextExpiry !== null) {
+          expiryTimer = setTimeout(
+            publishForViewer,
+            Math.min(nextExpiry - now.getTime(), 2_147_000_000),
+          );
+        }
+      };
       const unsubscribe = onSnapshot(
         query(
           collection(db, 'transactions'),
@@ -121,14 +150,11 @@ export function createFirestoreDataSource(db: Firestore): BudgetDataSource {
           ];
           const categoryIds = [
             ...new Set(
-              snapshot.docs
-                .map(
-                  (transaction) =>
-                    transaction.get('category_id') as string | null,
-                )
-                .filter((categoryId): categoryId is string =>
-                  Boolean(categoryId),
-                ),
+              snapshot.docs.flatMap((transaction) => {
+                const categoryId =
+                  (transaction.get('category_id') as string | null) ?? null;
+                return categoryId ? [categoryId] : [];
+              }),
             ),
           ];
           const importIds = [
@@ -156,19 +182,23 @@ export function createFirestoreDataSource(db: Firestore): BudgetDataSource {
                 ] as const;
               }),
             ),
-            Promise.all(
-              categoryIds.map(async (categoryId) => {
-                const category = await getDoc(
-                  doc(db, 'categories', categoryId),
-                );
-                return [
-                  categoryId,
-                  category.exists() && category.get('budget_id') === budgetId
-                    ? (category.get('name') as string)
-                    : null,
-                ] as const;
-              }),
-            ),
+            getDocs(
+              query(
+                collection(db, 'categories'),
+                where('budget_id', '==', budgetId),
+              ),
+            ).then((categorySnapshot) => {
+              const names = new Map(
+                categorySnapshot.docs.map(
+                  (category) =>
+                    [category.id, category.get('name') as string] as const,
+                ),
+              );
+              return categoryIds.map(
+                (categoryId) =>
+                  [categoryId, names.get(categoryId) ?? null] as const,
+              );
+            }),
             Promise.all(
               importIds.map(async (importId) => {
                 const batch = await getDoc(doc(db, 'import_batches', importId));
@@ -206,6 +236,12 @@ export function createFirestoreDataSource(db: Firestore): BudgetDataSource {
                 ] as const;
               }),
             ),
+            getDocs(
+              query(
+                collection(db, 'split_items'),
+                where('budget_id', '==', budgetId),
+              ),
+            ),
           ])
             .then(
               ([
@@ -213,13 +249,39 @@ export function createFirestoreDataSource(db: Firestore): BudgetDataSource {
                 categoryEntries,
                 importEntries,
                 tagEntries,
+                splitItemSnapshot,
               ]) => {
                 if (!active || currentRevision !== revision) return;
                 const accounts = new Map(accountEntries);
                 const categories = new Map(categoryEntries);
                 const importers = new Map(importEntries);
                 const tagsByTransaction = new Map(tagEntries);
-                const transactions: TransactionView[] = snapshot.docs
+                const splitItemsByTransaction = new Map<
+                  string,
+                  TransactionView['split_items']
+                >();
+                for (const item of splitItemSnapshot.docs) {
+                  const transactionId = item.get('transaction_id') as string;
+                  const splitItems =
+                    splitItemsByTransaction.get(transactionId) ?? [];
+                  splitItems.push({
+                    split_item_id: item.id,
+                    budget_id: item.get('budget_id') as string,
+                    transaction_id: transactionId,
+                    category_id: item.get('category_id') as string,
+                    amount: item.get('amount') as string,
+                    expense_frequency:
+                      (item.get('expense_frequency') as
+                        TransactionView['expense_frequency'] | undefined) ??
+                      null,
+                    description:
+                      (item.get('description') as string | null) ?? null,
+                    note: (item.get('note') as string | null) ?? null,
+                    position: item.get('position') as number,
+                  });
+                  splitItemsByTransaction.set(transactionId, splitItems);
+                }
+                latestTransactions = snapshot.docs
                   .map((transaction) => {
                     const accountId = transaction.get('account_id') as string;
                     const categoryId =
@@ -254,12 +316,29 @@ export function createFirestoreDataSource(db: Firestore): BudgetDataSource {
                         : null,
                       note: (transaction.get('note') as string | null) ?? null,
                       tags: tagsByTransaction.get(transaction.id) ?? [],
+                      expense_frequency:
+                        (transaction.get('expense_frequency') as
+                          TransactionView['expense_frequency'] | undefined) ??
+                        null,
+                      hidden_mode:
+                        (transaction.get('hidden_mode') as
+                          TransactionView['hidden_mode'] | undefined) ?? null,
+                      hidden_until:
+                        transaction.get('hidden_until') == null
+                          ? null
+                          : iso(transaction.get('hidden_until')),
+                      hidden_by_membership_id:
+                        (transaction.get('hidden_by_membership_id') as
+                          string | null) ?? null,
+                      split_items: (
+                        splitItemsByTransaction.get(transaction.id) ?? []
+                      ).sort((left, right) => left.position - right.position),
                     };
                   })
                   .sort((a, b) =>
                     b.operation_date.localeCompare(a.operation_date),
                   );
-                onData(transactions);
+                publishForViewer();
               },
             )
             .catch((error: unknown) => {
@@ -276,6 +355,7 @@ export function createFirestoreDataSource(db: Firestore): BudgetDataSource {
       return () => {
         active = false;
         revision += 1;
+        if (expiryTimer) clearTimeout(expiryTimer);
         unsubscribe();
       };
     },

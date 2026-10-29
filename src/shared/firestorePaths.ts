@@ -10,6 +10,7 @@ export const COLLECTIONS = {
   tags: 'tags',
   transactionTags: 'transaction_tags',
   transactions: 'transactions',
+  splitItems: 'split_items',
   invitations: 'invitations',
   invitationTokens: 'invitation_tokens',
   budgetPurgeQueue: 'budget_purge_queue',

@@ -48,6 +48,7 @@ export interface BudgetDataSource {
   ): Unsubscribe;
   subscribeTransactions(
     budgetId: string,
+    viewerMembershipId: string,
     onData: (transactions: TransactionView[]) => void,
     onError: ErrorListener,
   ): Unsubscribe;

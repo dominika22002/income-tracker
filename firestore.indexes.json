@@ -8,6 +8,14 @@
         { "fieldPath": "source", "order": "ASCENDING" },
         { "fieldPath": "enabled", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "split_items",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "budget_id", "order": "ASCENDING" },
+        { "fieldPath": "transaction_id", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

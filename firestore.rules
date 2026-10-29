@@ -76,6 +76,11 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    match /split_items/{splitItemId} {
+      allow read: if isActiveMember(resource.data.budget_id);
+      allow write: if false;
+    }
+
     match /categories/{categoryId} {
       allow read: if isActiveMember(resource.data.budget_id);
       allow write: if false;
@@ -93,6 +98,7 @@ service cloud.firestore {
 
     match /transaction_tags/{transactionTagId} {
       allow read: if signedIn()
+        && resource != null
         && exists(/databases/$(database)/documents/transactions/$(resource.data.transaction_id))
         && isActiveMember(get(/databases/$(database)/documents/transactions/$(resource.data.transaction_id)).data.budget_id);
       allow write: if false;

@@ -142,6 +142,31 @@ export interface TransactionView {
   category_name: string | null;
   note: string | null;
   tags: string[];
+  expense_frequency?: ExpenseFrequency | null;
+  hidden_mode?: HiddenMode | null;
+  hidden_until?: string | null;
+  hidden_by_membership_id?: string | null;
+  hidden_for_viewer?: boolean;
+  split_items?: SplitItemView[];
+}
+
+export type ExpenseFrequency = 'RECURRING' | 'IRREGULAR' | 'ONE_TIME';
+export type HiddenMode = 'DESCRIPTION' | 'TRANSACTION';
+
+export interface SplitItemInput {
+  amount: string;
+  category_id: string;
+  expense_frequency: ExpenseFrequency | null;
+  description: string | null;
+  note: string | null;
+}
+
+export interface SplitItemView extends Omit<SplitItemInput, 'category_id'> {
+  split_item_id: string;
+  budget_id: string;
+  transaction_id: string;
+  category_id: string | null;
+  position: number;
 }
 
 export type CategoryKind = StatementTransactionType;
@@ -268,6 +293,24 @@ export interface SaveTransactionResult {
   transaction_id: string;
 }
 
+export interface SaveTransactionSplitRequest {
+  budget_id: string;
+  transaction_id: string;
+  items: SplitItemInput[];
+}
+
+export interface DeleteTransactionSplitRequest {
+  budget_id: string;
+  transaction_id: string;
+}
+
+export interface SetTransactionHiddenRequest {
+  budget_id: string;
+  transaction_id: string;
+  hidden_mode: HiddenMode;
+  hidden_until: string | null;
+}
+
 export interface SaveCategoryRequest {
   budget_id: string;
   category_id?: string;
@@ -359,6 +402,9 @@ export interface BudgetBackend {
   saveTransaction(
     request: SaveTransactionRequest,
   ): Promise<SaveTransactionResult>;
+  saveTransactionSplit(request: SaveTransactionSplitRequest): Promise<void>;
+  deleteTransactionSplit(request: DeleteTransactionSplitRequest): Promise<void>;
+  setTransactionHidden(request: SetTransactionHiddenRequest): Promise<void>;
   saveCategory(request: SaveCategoryRequest): Promise<SaveCategoryResult>;
   archiveCategory(request: ArchiveCategoryRequest): Promise<void>;
   saveCategorizationRule(

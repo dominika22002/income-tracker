@@ -12,6 +12,8 @@ import { describeError } from './errorMessages';
 import { useAction, type Notice, type Notify } from './useAction';
 import { StatementCsvPreview } from '../imports/StatementCsvPreview';
 import { TransactionsWorkspace } from './TransactionsWorkspace';
+import { HiddenTransactionsNotice } from './HiddenTransactionsNotice';
+import { transactionsVisibleToMember } from '../../../../shared/domain/transactionFeatures';
 
 export type AppView =
   'overview' | 'transactions' | 'budgets' | 'imports' | 'settings';
@@ -802,6 +804,9 @@ export function TransactionsPanel({
       : undefined) ??
     budgets?.[0]?.budget_id ??
     '';
+  const viewerMembershipId =
+    budgets?.find((budget) => budget.budget_id === budgetId)?.membership_id ??
+    '';
   const [snapshot, setSnapshot] = useState<{
     budgetId: string;
     transactions: TransactionView[];
@@ -812,22 +817,28 @@ export function TransactionsPanel({
   } | null>(null);
 
   useEffect(() => {
-    if (!budgetId) return undefined;
+    if (!budgetId || !viewerMembershipId) return undefined;
     return data.subscribeTransactions(
       budgetId,
+      viewerMembershipId,
       (transactions) => {
         setSnapshot({ budgetId, transactions });
         setFailure(null);
       },
       (error) => setFailure({ budgetId, message: describeError(error) }),
     );
-  }, [data, budgetId]);
+  }, [data, budgetId, viewerMembershipId]);
 
   const transactions =
     snapshot?.budgetId === budgetId ? snapshot.transactions : null;
+  const visibleTransactions = transactions
+    ? transactionsVisibleToMember(transactions, viewerMembershipId, new Date())
+    : null;
   const errorMessage = failure?.budgetId === budgetId ? failure.message : null;
   const displayedTransactions =
-    compact && transactions ? transactions.slice(0, 5) : transactions;
+    compact && visibleTransactions
+      ? visibleTransactions.slice(0, 5)
+      : visibleTransactions;
 
   return (
     <section
@@ -889,52 +900,62 @@ export function TransactionsPanel({
             </div>
           ) : (
             <>
-              <div className="transaction-table-scroll">
-                <table className="transaction-table">
-                  <thead>
-                    <tr>
-                      <th scope="col">Data</th>
-                      <th scope="col">Opis</th>
-                      <th scope="col">Konto</th>
-                      <th scope="col">Typ</th>
-                      <th scope="col" className="transaction-amount">
-                        Kwota
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {displayedTransactions?.map((transaction) => (
-                      <tr key={transaction.transaction_id}>
-                        <td>
-                          <time dateTime={transaction.operation_date}>
-                            {formatTransactionDate(transaction.operation_date)}
-                          </time>
-                        </td>
-                        <td>{transaction.description}</td>
-                        <td>
-                          {transaction.account_label ?? 'Konto niedostępne'}
-                        </td>
-                        <td>{transactionTypeLabel(transaction.type)}</td>
-                        <td className="transaction-amount">
-                          {formatTransactionAmount(
-                            transaction.amount,
-                            transaction.currency,
-                          )}
-                        </td>
+              <HiddenTransactionsNotice transactions={transactions} />
+              {displayedTransactions?.length === 0 ? (
+                <p>Brak widocznych transakcji.</p>
+              ) : (
+                <div className="transaction-table-scroll">
+                  <table className="transaction-table">
+                    <thead>
+                      <tr>
+                        <th scope="col">Data</th>
+                        <th scope="col">Opis</th>
+                        <th scope="col">Konto</th>
+                        <th scope="col">Typ</th>
+                        <th scope="col" className="transaction-amount">
+                          Kwota
+                        </th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              {compact && transactions.length > 5 && onViewChange && (
-                <button
-                  className="button-secondary"
-                  type="button"
-                  onClick={() => onViewChange('transactions')}
-                >
-                  Pokaż wszystkie ({transactions.length})
-                </button>
+                    </thead>
+                    <tbody>
+                      {displayedTransactions?.map((transaction) => (
+                        <tr key={transaction.transaction_id}>
+                          <td>
+                            <time dateTime={transaction.operation_date}>
+                              {formatTransactionDate(
+                                transaction.operation_date,
+                              )}
+                            </time>
+                          </td>
+                          <td>{transaction.description}</td>
+                          <td>
+                            {transaction.account_label ?? 'Konto niedostępne'}
+                          </td>
+                          <td>{transactionTypeLabel(transaction.type)}</td>
+                          <td className="transaction-amount">
+                            {formatTransactionAmount(
+                              transaction.amount,
+                              transaction.currency,
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               )}
+              {compact &&
+                visibleTransactions !== null &&
+                visibleTransactions.length > 5 &&
+                onViewChange && (
+                  <button
+                    className="button-secondary"
+                    type="button"
+                    onClick={() => onViewChange('transactions')}
+                  >
+                    Pokaż wszystkie ({visibleTransactions.length})
+                  </button>
+                )}
             </>
           )}
         </>

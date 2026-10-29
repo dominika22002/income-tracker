@@ -233,3 +233,16 @@ This section maps implemented coverage only. It does not assert execution status
 | Callable wiring                                     | `tests/functions/callable.smoke.test.ts` (category/rule/transaction endpoints)                                                                                                   | `npm run test:functions` |
 
 This table describes coverage, not execution status. Suggestions are device-local and not shared with a categorization service; shared `USER` rules are only created through explicit user actions.
+
+## Stage 4 implementation mapping (splits and hiding)
+
+| Scenario IDs             | Implemented test file(s)                                                                                                          | Command              |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------- | -------------------- |
+| U-FR-30–U-FR-34, U-TR-18 | `tests/unit/transactionFeatures.test.ts` (exact decimal totals, remaining amount, currency inheritance, report/export projection) | `npm run test:unit`  |
+| U-FR-50–U-FR-54          | `tests/unit/transactionFeatures.test.ts` (author visibility, redaction, expiry boundary, offsets/time zones, presets)             | `npm run test:unit`  |
+| I-FR-30–I-FR-34, I-TR-18 | `tests/integration/transactions.test.ts` (atomic replace failure, source preservation, edit/delete, invalid sums)                 | `npm run test:rules` |
+| I-FR-50–I-FR-54          | `tests/integration/transactions.test.ts`, `tests/rules/firestore.rules.test.ts` (expiry and access retained after author leaves)  | `npm run test:rules` |
+| E-FR-30–E-FR-34          | `tests/e2e/transactions.e2e.test.tsx` (split editor and source currency)                                                          | `npm run test:e2e`   |
+| E-FR-50–E-FR-54          | `tests/e2e/transactions.e2e.test.tsx` (author visibility, hidden row/search and expiry notice for another member)                 | `npm run test:e2e`   |
+
+This mapping describes coverage, not execution status. Export projection tests cover the shared row data used by a future file exporter; the current application has no file-export feature or report aggregation screen to exercise end-to-end.

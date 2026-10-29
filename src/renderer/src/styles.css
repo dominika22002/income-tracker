@@ -1403,10 +1403,51 @@ code {
 }
 
 .transaction-form h3,
+.transaction-form h4,
 .transaction-form p,
 .transaction-form .actions,
 .transaction-form .category-suggestion {
   grid-column: 1 / -1;
+}
+
+.split-item-editor {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 0.75rem;
+  min-width: 0;
+  margin: 0;
+  padding: 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.split-item-editor legend {
+  padding: 0 0.35rem;
+  color: var(--text-secondary);
+  font-weight: 650;
+}
+
+.split-item-editor label,
+.split-item-editor > button {
+  min-width: 0;
+}
+
+.split-item-editor > button {
+  align-self: end;
+}
+
+.transaction-workspace [aria-label='Pozycje podziału'],
+.transaction-workspace [aria-label='Informacje o ukrytych transakcjach'] {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.transaction-workspace [aria-label='Pozycje podziału'] h5,
+.transaction-workspace [aria-label='Informacje o ukrytych transakcjach'] p {
+  margin-top: 0;
 }
 
 .transaction-form label,

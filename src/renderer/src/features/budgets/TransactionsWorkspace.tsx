@@ -18,8 +18,15 @@ import {
   type TransactionSort,
   type TransactionSortField,
 } from '../../../../shared/domain/transactions';
+import {
+  isTransactionHidden,
+  transactionsVisibleToMember,
+} from '../../../../shared/domain/transactionFeatures';
 import type { AppServices } from '../../backend/ports';
 import { describeError } from './errorMessages';
+import { HiddenTransactionsNotice } from './HiddenTransactionsNotice';
+import { TransactionSplitEditor } from './TransactionSplitEditor';
+import { TransactionVisibilityEditor } from './TransactionVisibilityEditor';
 
 const TYPES: StatementTransactionType[] = ['EXPENSE', 'INCOME', 'TRANSFER'];
 const TYPE_LABELS: Record<StatementTransactionType, string> = {
@@ -101,6 +108,9 @@ export function TransactionsWorkspace({
       : undefined) ??
     budgets?.[0]?.budget_id ??
     '';
+  const viewerMembershipId =
+    budgets?.find((budget) => budget.budget_id === budgetId)?.membership_id ??
+    '';
   const [activeTab, setActiveTab] = useState<
     'transactions' | 'categories' | 'rules'
   >('transactions');
@@ -122,6 +132,10 @@ export function TransactionsWorkspace({
   const [formOpen, setFormOpen] = useState(false);
   const [createRule, setCreateRule] = useState(false);
   const [selectedDetails, setSelectedDetails] = useState<string | null>(null);
+  const [splitEditorId, setSplitEditorId] = useState<string | null>(null);
+  const [visibilityEditorId, setVisibilityEditorId] = useState<string | null>(
+    null,
+  );
   const [correctionSnapshot, setCorrectionSnapshot] = useState(() => {
     try {
       return {
@@ -156,10 +170,11 @@ export function TransactionsWorkspace({
     if (!budgetId) return undefined;
     return services.data.subscribeTransactions(
       budgetId,
+      viewerMembershipId,
       (values) => setTransactionsSnapshot({ budgetId, values }),
       (failure) => setError(describeError(failure)),
     );
-  }, [budgetId, services.data]);
+  }, [budgetId, viewerMembershipId, services.data]);
 
   useEffect(() => {
     if (!budgetId) return undefined;
@@ -206,16 +221,19 @@ export function TransactionsWorkspace({
     transactionsSnapshot?.budgetId === budgetId
       ? transactionsSnapshot.values
       : null;
+  const visibleTransactions = transactions
+    ? transactionsVisibleToMember(transactions, viewerMembershipId, new Date())
+    : null;
   const orderedCategories = useMemo(
     () => categoryOrder(categories),
     [categories],
   );
   const filteredTransactions = useMemo(
     () =>
-      transactions
-        ? filterAndSortTransactions(transactions, filters, sort)
+      visibleTransactions
+        ? filterAndSortTransactions(visibleTransactions, filters, sort)
         : [],
-    [transactions, filters, sort],
+    [visibleTransactions, filters, sort],
   );
   const correctionSuggestion = suggestLearnedCategory(
     corrections,
@@ -526,6 +544,7 @@ export function TransactionsWorkspace({
         <p role="alert">{error ?? correctionSnapshot.error}</p>
       )}
       {notice && <p role="status">{notice}</p>}
+      <HiddenTransactionsNotice transactions={transactions ?? []} />
       {!budgetId ? (
         <p>Utwórz budżet, aby dodawać i przeglądać transakcje.</p>
       ) : (
@@ -729,7 +748,16 @@ export function TransactionsWorkspace({
                       {filteredTransactions.map((transaction) => (
                         <tr key={transaction.transaction_id}>
                           <td>{transaction.operation_date}</td>
-                          <td>{transaction.description}</td>
+                          <td>
+                            {transaction.description}
+                            {transaction.hidden_for_viewer && (
+                              <small>
+                                {transaction.hidden_until
+                                  ? ` Widoczny od ${new Date(transaction.hidden_until).toLocaleString('pl-PL')}.`
+                                  : ' Ukryty bezterminowo.'}
+                              </small>
+                            )}
+                          </td>
                           <td>
                             {transaction.account_label ?? 'Konto niedostępne'}
                           </td>
@@ -785,12 +813,88 @@ export function TransactionsWorkspace({
                         Identyfikator bankowy:{' '}
                         {transaction.bank_transaction_id ?? '—'}
                       </p>
-                      <button
-                        type="button"
-                        onClick={() => startEdit(transaction)}
-                      >
-                        Edytuj transakcję
-                      </button>
+                      {(transaction.split_items?.length ?? 0) > 0 && (
+                        <section aria-label="Pozycje podziału">
+                          <h5>Pozycje podziału</h5>
+                          <ul>
+                            {transaction.split_items?.map((item) => (
+                              <li key={item.split_item_id}>
+                                {item.amount} {transaction.currency} ·{' '}
+                                {categories.find(
+                                  (category) =>
+                                    category.category_id === item.category_id,
+                                )?.name ?? 'Kategoria niedostępna'}
+                                {item.description
+                                  ? ` · ${item.description}`
+                                  : ''}
+                              </li>
+                            ))}
+                          </ul>
+                        </section>
+                      )}
+                      {!transaction.hidden_for_viewer && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setSplitEditorId((current) =>
+                                current === transaction.transaction_id
+                                  ? null
+                                  : transaction.transaction_id,
+                              )
+                            }
+                          >
+                            {(transaction.split_items?.length ?? 0) > 0
+                              ? 'Edytuj podział'
+                              : 'Podziel transakcję'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setVisibilityEditorId((current) =>
+                                current === transaction.transaction_id
+                                  ? null
+                                  : transaction.transaction_id,
+                              )
+                            }
+                          >
+                            {isTransactionHidden(
+                              transaction.hidden_mode,
+                              transaction.hidden_until,
+                              new Date(),
+                            )
+                              ? 'Zmień termin ukrycia'
+                              : 'Ukryj'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => startEdit(transaction)}
+                          >
+                            Edytuj transakcję
+                          </button>
+                        </>
+                      )}
+                      {splitEditorId === transaction.transaction_id && (
+                        <TransactionSplitEditor
+                          transaction={transaction}
+                          categories={orderedCategories}
+                          backend={services.backend}
+                          onComplete={(message) => {
+                            setSplitEditorId(null);
+                            setNotice(message);
+                          }}
+                        />
+                      )}
+                      {visibilityEditorId === transaction.transaction_id && (
+                        <TransactionVisibilityEditor
+                          transaction={transaction}
+                          backend={services.backend}
+                          onComplete={(message) => {
+                            setVisibilityEditorId(null);
+                            setNotice(message);
+                          }}
+                        />
+                      )}
                     </section>
                   ),
               )}
@@ -872,6 +976,7 @@ export function TransactionsWorkspace({
                     <input
                       aria-label="Kwota transakcji"
                       required
+                      disabled={(editing?.split_items?.length ?? 0) > 0}
                       inputMode="decimal"
                       pattern="[+-]?[0-9]{1,15}(\\.[0-9]{1,4})?"
                       value={form.amount}
@@ -883,11 +988,18 @@ export function TransactionsWorkspace({
                       }
                     />
                   </label>
+                  {(editing?.split_items?.length ?? 0) > 0 && (
+                    <p>
+                      Usuń podział przed zmianą kwoty źródłowej; waluta i kwota
+                      pozycji muszą pozostać zgodne ze źródłem.
+                    </p>
+                  )}
                   <label>
                     Waluta źródłowa
                     <input
                       aria-label="Waluta transakcji"
                       required
+                      disabled={(editing?.split_items?.length ?? 0) > 0}
                       minLength={3}
                       maxLength={3}
                       value={form.currency}

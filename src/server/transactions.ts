@@ -1,12 +1,21 @@
 import { createHash } from 'node:crypto';
+import { Timestamp, type DocumentSnapshot } from 'firebase-admin/firestore';
 import type {
   SaveTransactionRequest,
   SaveTransactionResult,
+  SaveTransactionSplitRequest,
+  SetTransactionHiddenRequest,
 } from '../shared/contracts';
 import { findMatchingUserRule } from '../shared/domain/transactions';
+import { isTransactionHidden } from '../shared/domain/transactionFeatures';
 import { DomainError } from '../shared/domain/errors';
 import { COLLECTIONS } from '../shared/firestorePaths';
-import { validateSaveTransactionRequest } from '../shared/validators';
+import {
+  validateSaveTransactionRequest,
+  validateSaveTransactionSplitRequest,
+  validateDeleteTransactionSplitRequest,
+  validateSetTransactionHiddenRequest,
+} from '../shared/validators';
 import { readActiveMembership } from './access';
 import { membershipFromSnapshot, toTimestamp } from './converters';
 import { requireCaller, type Caller, type ServerDeps } from './context';
@@ -79,6 +88,38 @@ export async function saveTransaction(
     }
     if (existing.exists && existing.get('budget_id') !== request.budget_id) {
       throw new DomainError('NOT_FOUND');
+    }
+    const existingSplitItems = existing.exists
+      ? await tx.get(
+          deps.db
+            .collection(COLLECTIONS.splitItems)
+            .where('budget_id', '==', request.budget_id)
+            .where('transaction_id', '==', transactionId),
+        )
+      : null;
+    if (
+      existingSplitItems?.size &&
+      (existing.get('amount') !== request.amount ||
+        existing.get('currency') !== request.currency)
+    ) {
+      throw new DomainError(
+        'INVALID_ARGUMENT',
+        'Remove or update the split before changing the source amount or currency.',
+      );
+    }
+    if (
+      existing.exists &&
+      isTransactionHidden(
+        existing.get('hidden_mode'),
+        timestampIso(existing.get('hidden_until')),
+        deps.now(),
+      ) &&
+      existing.get('hidden_by_membership_id') !== actor.membership_id
+    ) {
+      throw new DomainError(
+        'PERMISSION_DENIED',
+        'Only the member who hid this transaction can edit it while it is hidden.',
+      );
     }
     if (
       existing.exists &&
@@ -310,4 +351,217 @@ export async function saveTransaction(
     }
   });
   return { transaction_id: transactionId };
+}
+
+export async function saveTransactionSplit(
+  deps: ServerDeps,
+  caller: Caller | null,
+  input: unknown,
+): Promise<void> {
+  const { uid } = requireCaller(caller);
+  const request: SaveTransactionSplitRequest | null =
+    validateSaveTransactionSplitRequest(input);
+  if (!request) {
+    throw new DomainError('INVALID_ARGUMENT', 'Invalid transaction split.');
+  }
+  const transactionRef = deps.db.doc(
+    `${COLLECTIONS.transactions}/${request.transaction_id}`,
+  );
+  const splitQuery = deps.db
+    .collection(COLLECTIONS.splitItems)
+    .where('budget_id', '==', request.budget_id)
+    .where('transaction_id', '==', request.transaction_id);
+
+  await deps.db.runTransaction(async (tx) => {
+    const actor = await readActiveMembership(deps, tx, request.budget_id, uid);
+    if (!actor) throw new DomainError('NOT_ACTIVE_MEMBER');
+    const transaction = await tx.get(transactionRef);
+    if (
+      !transaction.exists ||
+      transaction.get('budget_id') !== request.budget_id
+    ) {
+      throw new DomainError('NOT_FOUND');
+    }
+    assertHiddenTransactionAuthor(transaction, actor.membership_id, deps.now());
+    const existingItems = await tx.get(splitQuery);
+    const categories = await tx.get(
+      deps.db
+        .collection(COLLECTIONS.categories)
+        .where('budget_id', '==', request.budget_id),
+    );
+    const categoryById = new Map(
+      categories.docs.map((category) => [category.id, category]),
+    );
+    const previouslyUsedCategoryIds = new Set(
+      existingItems.docs.map((item) => item.get('category_id') as string),
+    );
+    for (const item of request.items) {
+      const category = categoryById.get(item.category_id);
+      if (
+        !category ||
+        category.get('kind') !== transaction.get('type') ||
+        (category.get('archived_at') != null &&
+          !previouslyUsedCategoryIds.has(item.category_id))
+      ) {
+        throw new DomainError(
+          'INVALID_ARGUMENT',
+          'Each split category must belong to this budget and match the transaction type.',
+        );
+      }
+    }
+    const sourceAmount = transaction.get('amount') as string;
+    const amountTotal = request.items.reduce(
+      (total, item) => total + decimalUnits(item.amount),
+      0n,
+    );
+    if (decimalUnits(sourceAmount) !== amountTotal) {
+      throw new DomainError(
+        'INVALID_ARGUMENT',
+        'Split amounts must equal the source transaction amount.',
+      );
+    }
+    for (const item of existingItems.docs) tx.delete(item.ref);
+    request.items.forEach((item, position) => {
+      const splitItemId = deps.newId();
+      tx.create(deps.db.doc(`${COLLECTIONS.splitItems}/${splitItemId}`), {
+        split_item_id: splitItemId,
+        budget_id: request.budget_id,
+        transaction_id: request.transaction_id,
+        category_id: item.category_id,
+        amount: item.amount,
+        expense_frequency: item.expense_frequency,
+        description: item.description,
+        note: item.note,
+        position,
+      });
+    });
+  });
+}
+
+export async function deleteTransactionSplit(
+  deps: ServerDeps,
+  caller: Caller | null,
+  input: unknown,
+): Promise<void> {
+  const { uid } = requireCaller(caller);
+  const request = validateDeleteTransactionSplitRequest(input);
+  if (!request) {
+    throw new DomainError('INVALID_ARGUMENT', 'Invalid transaction split.');
+  }
+  await deps.db.runTransaction(async (tx) => {
+    const actor = await readActiveMembership(deps, tx, request.budget_id, uid);
+    if (!actor) throw new DomainError('NOT_ACTIVE_MEMBER');
+    const transaction = await tx.get(
+      deps.db.doc(`${COLLECTIONS.transactions}/${request.transaction_id}`),
+    );
+    if (
+      !transaction.exists ||
+      transaction.get('budget_id') !== request.budget_id
+    ) {
+      throw new DomainError('NOT_FOUND');
+    }
+    assertHiddenTransactionAuthor(transaction, actor.membership_id, deps.now());
+    const items = await tx.get(
+      deps.db
+        .collection(COLLECTIONS.splitItems)
+        .where('budget_id', '==', request.budget_id)
+        .where('transaction_id', '==', request.transaction_id),
+    );
+    for (const item of items.docs) tx.delete(item.ref);
+  });
+}
+
+export async function setTransactionHidden(
+  deps: ServerDeps,
+  caller: Caller | null,
+  input: unknown,
+): Promise<void> {
+  const { uid } = requireCaller(caller);
+  const request: SetTransactionHiddenRequest | null =
+    validateSetTransactionHiddenRequest(input);
+  if (!request) {
+    throw new DomainError(
+      'INVALID_ARGUMENT',
+      'Invalid hidden transaction settings.',
+    );
+  }
+  const hiddenUntil = request.hidden_until
+    ? new Date(request.hidden_until)
+    : null;
+  if (hiddenUntil && hiddenUntil.getTime() <= deps.now().getTime()) {
+    throw new DomainError(
+      'INVALID_ARGUMENT',
+      'The hidden period must end in the future.',
+    );
+  }
+  await deps.db.runTransaction(async (tx) => {
+    const actor = await readActiveMembership(deps, tx, request.budget_id, uid);
+    if (!actor) throw new DomainError('NOT_ACTIVE_MEMBER');
+    const transactionRef = deps.db.doc(
+      `${COLLECTIONS.transactions}/${request.transaction_id}`,
+    );
+    const transaction = await tx.get(transactionRef);
+    if (
+      !transaction.exists ||
+      transaction.get('budget_id') !== request.budget_id
+    ) {
+      throw new DomainError('NOT_FOUND');
+    }
+    const currentUntil = timestampIso(transaction.get('hidden_until'));
+    const currentlyHidden = isTransactionHidden(
+      transaction.get('hidden_mode'),
+      currentUntil,
+      deps.now(),
+    );
+    if (currentlyHidden) {
+      assertHiddenTransactionAuthor(
+        transaction,
+        actor.membership_id,
+        deps.now(),
+      );
+      if (transaction.get('hidden_mode') !== request.hidden_mode) {
+        throw new DomainError(
+          'INVALID_ARGUMENT',
+          'The hidden mode cannot be changed before the current hiding expires.',
+        );
+      }
+    }
+    tx.update(transactionRef, {
+      hidden_mode: request.hidden_mode,
+      hidden_until: hiddenUntil ? toTimestamp(hiddenUntil) : null,
+      hidden_by_membership_id: actor.membership_id,
+    });
+  });
+}
+
+function decimalUnits(value: string): bigint {
+  const negative = value.startsWith('-');
+  const unsigned = value.replace(/^[+-]/, '');
+  const [whole, fraction = ''] = unsigned.split('.');
+  const units = BigInt(whole) * 10_000n + BigInt(fraction.padEnd(4, '0'));
+  return negative ? -units : units;
+}
+
+function timestampIso(value: unknown): string | null {
+  return value instanceof Timestamp ? value.toDate().toISOString() : null;
+}
+
+function assertHiddenTransactionAuthor(
+  transaction: DocumentSnapshot,
+  membershipId: string,
+  now: Date,
+): void {
+  if (
+    isTransactionHidden(
+      transaction.get('hidden_mode'),
+      timestampIso(transaction.get('hidden_until')),
+      now,
+    ) &&
+    transaction.get('hidden_by_membership_id') !== membershipId
+  ) {
+    throw new DomainError(
+      'PERMISSION_DENIED',
+      'Only the member who hid this transaction can edit it while it is hidden.',
+    );
+  }
 }

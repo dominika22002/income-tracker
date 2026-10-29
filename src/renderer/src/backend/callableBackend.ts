@@ -50,6 +50,10 @@ export function createCallableBackend(functions: Functions): BudgetBackend {
     createBudget: (request) => call('createBudget', request),
     createAccount: (request) => call('createAccount', request),
     saveTransaction: (request) => call('saveTransaction', request),
+    saveTransactionSplit: (request) => call('saveTransactionSplit', request),
+    deleteTransactionSplit: (request) =>
+      call('deleteTransactionSplit', request),
+    setTransactionHidden: (request) => call('setTransactionHidden', request),
     saveCategory: (request) => call('saveCategory', request),
     archiveCategory: (request) => call('archiveCategory', request),
     saveCategorizationRule: (request) =>

@@ -12,7 +12,12 @@ import { createAccount } from './accounts';
 import { archiveCategory, saveCategory } from './categories';
 import { saveCategorizationRule } from './categorization';
 import { commitCsvImport } from './imports';
-import { saveTransaction } from './transactions';
+import {
+  deleteTransactionSplit,
+  saveTransaction,
+  saveTransactionSplit,
+  setTransactionHidden,
+} from './transactions';
 import type { Caller } from './context';
 import { leaveBudget, removeMember } from './memberships';
 import { ensureUserProfile, updatePreferences } from './profile';
@@ -42,6 +47,9 @@ export const CALLABLE_NAMES = [
   'createBudget',
   'createAccount',
   'saveTransaction',
+  'saveTransactionSplit',
+  'deleteTransactionSplit',
+  'setTransactionHidden',
   'saveCategory',
   'archiveCategory',
   'saveCategorizationRule',
@@ -81,6 +89,12 @@ export function createHandlers(
       createAccount(deps, callerFromAuth(auth), data),
     saveTransaction: (auth, data) =>
       saveTransaction(deps, callerFromAuth(auth), data),
+    saveTransactionSplit: (auth, data) =>
+      saveTransactionSplit(deps, callerFromAuth(auth), data),
+    deleteTransactionSplit: (auth, data) =>
+      deleteTransactionSplit(deps, callerFromAuth(auth), data),
+    setTransactionHidden: (auth, data) =>
+      setTransactionHidden(deps, callerFromAuth(auth), data),
     saveCategory: (auth, data) =>
       saveCategory(deps, callerFromAuth(auth), data),
     archiveCategory: async (auth, data) => {
@@ -173,6 +187,10 @@ export function createLocalBackend(
     createBudget: (request) => call('createBudget', request),
     createAccount: (request) => call('createAccount', request),
     saveTransaction: (request) => call('saveTransaction', request),
+    saveTransactionSplit: (request) => call('saveTransactionSplit', request),
+    deleteTransactionSplit: (request) =>
+      call('deleteTransactionSplit', request),
+    setTransactionHidden: (request) => call('setTransactionHidden', request),
     saveCategory: (request) => call('saveCategory', request),
     archiveCategory: (request) => call('archiveCategory', request),
     saveCategorizationRule: (request) =>

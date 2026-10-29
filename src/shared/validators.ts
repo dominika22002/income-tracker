@@ -8,11 +8,14 @@ import type {
   CreateAccountRequest,
   CreateBudgetRequest,
   CreateInvitationRequest,
+  DeleteTransactionSplitRequest,
   OAuthCallbackPayload,
   RemoveMemberRequest,
   ReadLocalStatementRequest,
   SaveCategorizationRuleRequest,
   SaveCategoryRequest,
+  SaveTransactionSplitRequest,
+  SetTransactionHiddenRequest,
   SaveTransactionRequest,
   StatementImportRowRequest,
   UpdatePreferencesRequest,
@@ -112,6 +115,8 @@ const TRANSACTION_TYPES = new Set(['EXPENSE', 'INCOME', 'TRANSFER']);
 const CATEGORY_KINDS = new Set(['EXPENSE', 'INCOME', 'TRANSFER']);
 const CATEGORIZATION_FIELDS = new Set(['DESCRIPTION', 'ACCOUNT', 'AMOUNT']);
 const CATEGORIZATION_OPERATORS = new Set(['CONTAINS', 'EQUALS', 'STARTS_WITH']);
+const EXPENSE_FREQUENCIES = new Set(['RECURRING', 'IRREGULAR', 'ONE_TIME']);
+const HIDDEN_MODES = new Set(['DESCRIPTION', 'TRANSACTION']);
 const STATEMENT_PARSER_IDS = new Set(['history-v1', 'savings-v1']);
 const DECIMAL_AMOUNT_PATTERN = /^[+-]?\d{1,15}(?:\.\d{1,4})?$/;
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
@@ -328,6 +333,104 @@ export function validateSaveTransactionRequest(
     };
   }
   return request;
+}
+
+export function validateSaveTransactionSplitRequest(
+  input: unknown,
+): SaveTransactionSplitRequest | null {
+  const record = asRecord(input);
+  if (
+    !record ||
+    !isUuid(record.budget_id) ||
+    !isTransactionId(record.transaction_id) ||
+    !Array.isArray(record.items) ||
+    record.items.length < 2 ||
+    record.items.length > 100
+  ) {
+    return null;
+  }
+  const items: SaveTransactionSplitRequest['items'] = [];
+  for (const value of record.items) {
+    const item = asRecord(value);
+    if (
+      !item ||
+      !isAmount(item.amount) ||
+      !isUuid(item.category_id) ||
+      (item.expense_frequency != null &&
+        !EXPENSE_FREQUENCIES.has(String(item.expense_frequency)))
+    ) {
+      return null;
+    }
+    const description =
+      item.description === undefined
+        ? null
+        : validateOptionalText(item.description, 1000);
+    const note =
+      item.note === undefined
+        ? null
+        : validateOptionalText(item.note, MAX_TRANSACTION_NOTE_LENGTH);
+    if (description === undefined || note === undefined) {
+      return null;
+    }
+    items.push({
+      amount: item.amount,
+      category_id: item.category_id,
+      expense_frequency:
+        (item.expense_frequency as SaveTransactionSplitRequest['items'][number]['expense_frequency']) ??
+        null,
+      description,
+      note,
+    });
+  }
+  return {
+    budget_id: record.budget_id,
+    transaction_id: record.transaction_id,
+    items,
+  };
+}
+
+export function validateSetTransactionHiddenRequest(
+  input: unknown,
+): SetTransactionHiddenRequest | null {
+  const record = asRecord(input);
+  if (
+    !record ||
+    !isUuid(record.budget_id) ||
+    !isTransactionId(record.transaction_id) ||
+    !HIDDEN_MODES.has(String(record.hidden_mode)) ||
+    (record.hidden_until !== null &&
+      (typeof record.hidden_until !== 'string' ||
+        !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?(?:Z|[+-]\d{2}:\d{2})$/.test(
+          record.hidden_until,
+        ) ||
+        !Number.isFinite(Date.parse(record.hidden_until))))
+  ) {
+    return null;
+  }
+  return {
+    budget_id: record.budget_id,
+    transaction_id: record.transaction_id,
+    hidden_mode:
+      record.hidden_mode as SetTransactionHiddenRequest['hidden_mode'],
+    hidden_until: record.hidden_until as string | null,
+  };
+}
+
+export function validateDeleteTransactionSplitRequest(
+  input: unknown,
+): DeleteTransactionSplitRequest | null {
+  const record = asRecord(input);
+  if (
+    !record ||
+    !isUuid(record.budget_id) ||
+    !isTransactionId(record.transaction_id)
+  ) {
+    return null;
+  }
+  return {
+    budget_id: record.budget_id,
+    transaction_id: record.transaction_id,
+  };
 }
 
 export function validateSaveCategoryRequest(

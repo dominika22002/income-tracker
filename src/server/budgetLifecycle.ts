@@ -41,14 +41,20 @@ export async function purgeBudgetData(
     throw new DomainError('BUDGET_HAS_ACTIVE_MEMBERS');
   }
 
-  const invitations = await deps.db
-    .collection(COLLECTIONS.invitations)
-    .where('budget_id', '==', budgetId)
-    .get();
-  const memberships = await deps.db
-    .collection(COLLECTIONS.memberships)
-    .where('budget_id', '==', budgetId)
-    .get();
+  const [invitations, memberships, splitItems] = await Promise.all([
+    deps.db
+      .collection(COLLECTIONS.invitations)
+      .where('budget_id', '==', budgetId)
+      .get(),
+    deps.db
+      .collection(COLLECTIONS.memberships)
+      .where('budget_id', '==', budgetId)
+      .get(),
+    deps.db
+      .collection(COLLECTIONS.splitItems)
+      .where('budget_id', '==', budgetId)
+      .get(),
+  ]);
 
   await deleteAll(deps, [
     ...invitations.docs.map((doc) =>
@@ -58,6 +64,7 @@ export async function purgeBudgetData(
     ),
     ...invitations.docs.map((doc) => doc.ref),
     ...memberships.docs.map((doc) => doc.ref),
+    ...splitItems.docs.map((doc) => doc.ref),
   ]);
 
   await deps.db.recursiveDelete(

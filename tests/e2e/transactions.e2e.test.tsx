@@ -10,6 +10,14 @@ import {
 import { type RulesTestEnvironment } from '@firebase/rules-unit-testing';
 import { setLogLevel } from 'firebase/firestore';
 import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  where,
+} from 'firebase/firestore';
+import {
   afterAll,
   afterEach,
   beforeAll,
@@ -26,6 +34,11 @@ const USER: TestUser = {
   uid: 'transactions-ui-user',
   email: 'transactions-ui-user@example.test',
   displayName: 'Synthetic User',
+};
+const OTHER_USER: TestUser = {
+  uid: 'transactions-ui-other',
+  email: 'transactions-ui-other@example.test',
+  displayName: 'Synthetic Other Member',
 };
 
 describe('transaction, category and search UI (E-FR-25…28, E-FR-35…36)', () => {
@@ -214,9 +227,11 @@ describe('transaction, category and search UI (E-FR-25…28, E-FR-35…36)', () 
       target: { value: 'Synthetic local ride' },
     });
     const ruleCategorySelect = ui.getByLabelText('Kategoria reguły');
-    const ruleCategoryId = within(ruleCategorySelect)
-      .getByRole('option', { name: 'Synthetic auto · Wydatek' })
-      .getAttribute('value');
+    const ruleCategoryId = (
+      await within(ruleCategorySelect).findByRole('option', {
+        name: 'Synthetic auto · Wydatek',
+      })
+    ).getAttribute('value');
     fireEvent.change(ruleCategorySelect, {
       target: { value: ruleCategoryId },
     });
@@ -291,5 +306,182 @@ describe('transaction, category and search UI (E-FR-25…28, E-FR-35…36)', () 
       const rows = ui.getAllByText('Synthetic local ride');
       expect(rows.length).toBeGreaterThanOrEqual(2);
     });
+  });
+
+  it('edits a split and keeps a hidden transaction private from another active member', async () => {
+    const owner = servicesFor(env, USER, clock);
+    const budget = await owner.services.backend.createBudget({
+      name: 'Synthetic split and hidden budget',
+    });
+    const account = await owner.services.backend.createAccount({
+      budget_id: budget.budget_id,
+      label: 'Synthetic household account',
+      currency: 'CHF',
+      account_type: 'CHECKING',
+    });
+    const category = await owner.services.backend.saveCategory({
+      budget_id: budget.budget_id,
+      name: 'Synthetic household',
+      kind: 'EXPENSE',
+      sort_order: 0,
+    });
+    await owner.services.backend.saveTransaction({
+      budget_id: budget.budget_id,
+      account_id: account.account_id,
+      operation_date: '2026-03-15',
+      description: 'Synthetic surprise purchase',
+      amount: '25.00',
+      currency: 'CHF',
+      type: 'EXPENSE',
+      category_id: category.category_id,
+    });
+    const invitation = await owner.services.backend.createInvitation({
+      budget_id: budget.budget_id,
+    });
+    const other = servicesFor(env, OTHER_USER, clock);
+    await other.services.backend.acceptInvitation(invitation.token);
+    await owner.auth.signIn();
+    await other.auth.signIn();
+    const ownerDb = env.authenticatedContext(USER.uid).firestore();
+    const ownerTransactions = await getDocs(
+      query(
+        collection(ownerDb, 'transactions'),
+        where('budget_id', '==', budget.budget_id),
+      ),
+    );
+    await getDoc(doc(ownerDb, 'accounts', account.account_id));
+    await getDoc(doc(ownerDb, 'categories', category.category_id));
+    await getDocs(
+      query(
+        collection(ownerDb, 'accounts'),
+        where('budget_id', '==', budget.budget_id),
+      ),
+    );
+    await getDocs(
+      query(
+        collection(ownerDb, 'categories'),
+        where('budget_id', '==', budget.budget_id),
+      ),
+    );
+    await getDocs(
+      query(
+        collection(ownerDb, 'categorization_rules'),
+        where('budget_id', '==', budget.budget_id),
+      ),
+    );
+    await getDocs(
+      query(
+        collection(ownerDb, 'transaction_tags'),
+        where('transaction_id', '==', ownerTransactions.docs[0].id),
+      ),
+    );
+    await getDocs(
+      query(
+        collection(ownerDb, 'split_items'),
+        where('budget_id', '==', budget.budget_id),
+      ),
+    );
+    const expectedTransactionIds = ownerTransactions.docs
+      .map((transaction) => transaction.id)
+      .sort();
+    const subscriptionResult = await new Promise((resolve, reject) => {
+      let unsubscribe: () => void = () => {};
+      unsubscribe = owner.services.data.subscribeTransactions(
+        budget.budget_id,
+        budget.membership_id,
+        (transactions) => {
+          const transactionIds = transactions
+            .map((transaction) => transaction.transaction_id)
+            .sort();
+          if (
+            transactionIds.length !== expectedTransactionIds.length ||
+            transactionIds.some(
+              (transactionId, index) =>
+                transactionId !== expectedTransactionIds[index],
+            )
+          ) {
+            return;
+          }
+          unsubscribe();
+          resolve(transactions);
+        },
+        (failure) => {
+          unsubscribe();
+          reject(failure);
+        },
+      );
+    });
+    expect(subscriptionResult).toHaveLength(expectedTransactionIds.length);
+
+    const ownerUi = render(
+      <BudgetApp
+        services={owner.services}
+        requireAuth={false}
+        activeView="transactions"
+      />,
+    );
+    const ownerScreen = within(ownerUi.container);
+    const transactionText = await ownerScreen.findByText(
+      'Synthetic surprise purchase',
+    );
+    const transactionRow = transactionText.closest('tr');
+    if (!transactionRow) throw new Error('Expected transaction row.');
+    fireEvent.click(
+      within(transactionRow).getByRole('button', { name: 'Szczegóły' }),
+    );
+    fireEvent.click(
+      await ownerScreen.findByRole('button', { name: 'Podziel transakcję' }),
+    );
+    fireEvent.change(ownerScreen.getByLabelText('Kwota pozycji 1'), {
+      target: { value: '10.00' },
+    });
+    fireEvent.change(ownerScreen.getByLabelText('Kwota pozycji 2'), {
+      target: { value: '15.00' },
+    });
+    for (const index of [1, 2]) {
+      fireEvent.change(
+        ownerScreen.getByLabelText(`Kategoria pozycji ${index}`),
+        {
+          target: { value: category.category_id },
+        },
+      );
+    }
+    fireEvent.click(
+      ownerScreen.getByRole('button', { name: 'Zapisz podział' }),
+    );
+    await ownerScreen.findByText('Podział transakcji został zapisany.');
+
+    fireEvent.click(ownerScreen.getByRole('button', { name: 'Ukryj' }));
+    fireEvent.change(ownerScreen.getByLabelText('Zakres ukrycia'), {
+      target: { value: 'TRANSACTION' },
+    });
+    fireEvent.change(ownerScreen.getByLabelText('Okres ukrycia'), {
+      target: { value: 'FOREVER' },
+    });
+    fireEvent.click(
+      ownerScreen.getByRole('button', { name: 'Zapisz ukrycie' }),
+    );
+    await ownerScreen.findByText('Ustawienia ukrycia zostały zapisane.');
+    expect(
+      ownerScreen.getAllByText('Synthetic surprise purchase').length,
+    ).toBeGreaterThan(0);
+
+    const otherUi = render(
+      <BudgetApp
+        services={other.services}
+        requireAuth={false}
+        activeView="transactions"
+      />,
+    );
+    const otherScreen = within(otherUi.container);
+    await otherScreen.findByText('Pozostanie ukryta bezterminowo.');
+    expect(otherUi.container.textContent).not.toContain(
+      'Synthetic surprise purchase',
+    );
+    fireEvent.change(otherScreen.getByLabelText('Szukaj opisu'), {
+      target: { value: 'surprise' },
+    });
+    expect(otherScreen.queryByText('Synthetic surprise purchase')).toBeNull();
+    expect(otherScreen.queryByRole('button', { name: 'Szczegóły' })).toBeNull();
   });
 });

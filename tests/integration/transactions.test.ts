@@ -3,9 +3,26 @@ import { createAccount } from '../../src/server/accounts';
 import { archiveCategory, saveCategory } from '../../src/server/categories';
 import { saveCategorizationRule } from '../../src/server/categorization';
 import { createBudget } from '../../src/server/budgets';
-import { saveTransaction } from '../../src/server/transactions';
+import {
+  deleteTransactionSplit,
+  saveTransaction,
+  saveTransactionSplit,
+  setTransactionHidden,
+} from '../../src/server/transactions';
+import {
+  acceptInvitation,
+  createInvitation,
+} from '../../src/server/invitations';
+import { leaveBudget } from '../../src/server/memberships';
 import { DomainError } from '../../src/shared/domain/errors';
-import { adminDb, clearFirestore, testDeps } from './helpers';
+import { isTransactionHidden } from '../../src/shared/domain/transactionFeatures';
+import {
+  adminDb,
+  clearFirestore,
+  failingDb,
+  testDeps,
+  TestClock,
+} from './helpers';
 
 const alice = {
   uid: 'transactions-alice',
@@ -267,5 +284,192 @@ describe('transaction and category services (I-FR-20, I-FR-24…29, I-FR-35…37
         category_id: category.category_id,
       }),
     ).rejects.toBeInstanceOf(DomainError);
+  });
+
+  it('saves, replaces and removes split items atomically without changing source amount or currency', async () => {
+    const { deps, budget, account, category } = await setup();
+    const saved = await saveTransaction(deps, alice, {
+      budget_id: budget.budget_id,
+      account_id: account.account_id,
+      operation_date: '2026-03-09',
+      description: 'Synthetic split purchase',
+      amount: '100.0000',
+      currency: 'EUR',
+      type: 'EXPENSE',
+      category_id: category.category_id,
+    });
+    const initialSplit = {
+      budget_id: budget.budget_id,
+      transaction_id: saved.transaction_id,
+      items: [
+        {
+          amount: '35.1250',
+          category_id: category.category_id,
+          expense_frequency: 'RECURRING' as const,
+        },
+        { amount: '64.8750', category_id: category.category_id },
+      ],
+    };
+    await saveTransactionSplit(deps, alice, initialSplit);
+    const db = adminDb();
+    const sourceRef = db.doc(`transactions/${saved.transaction_id}`);
+    const splitQuery = db
+      .collection('split_items')
+      .where('budget_id', '==', budget.budget_id)
+      .where('transaction_id', '==', saved.transaction_id);
+    let items = await splitQuery.get();
+    expect(items.size).toBe(2);
+    expect((await sourceRef.get()).data()).toMatchObject({
+      amount: '100.0000',
+      currency: 'EUR',
+    });
+
+    await expect(
+      saveTransactionSplit(deps, alice, {
+        ...initialSplit,
+        items: [
+          initialSplit.items[0],
+          { ...initialSplit.items[1], amount: '64.8749' },
+        ],
+      }),
+    ).rejects.toMatchObject({ code: 'INVALID_ARGUMENT' });
+    await expect(
+      saveTransaction(deps, alice, {
+        transaction_id: saved.transaction_id,
+        budget_id: budget.budget_id,
+        account_id: account.account_id,
+        operation_date: '2026-03-09',
+        description: 'Synthetic split purchase',
+        amount: '101.0000',
+        currency: 'EUR',
+        type: 'EXPENSE',
+        category_id: category.category_id,
+      }),
+    ).rejects.toMatchObject({ code: 'INVALID_ARGUMENT' });
+    expect((await splitQuery.get()).size).toBe(2);
+
+    const failureDeps = testDeps(new TestClock(), failingDb(db, 2));
+    await expect(
+      saveTransactionSplit(failureDeps, alice, {
+        ...initialSplit,
+        items: [
+          { amount: '40.0000', category_id: category.category_id },
+          { amount: '60.0000', category_id: category.category_id },
+        ],
+      }),
+    ).rejects.toThrow('Injected failure');
+    items = await splitQuery.get();
+    expect(items.size).toBe(2);
+    expect(items.docs.map((item) => item.get('amount')).sort()).toEqual([
+      '35.1250',
+      '64.8750',
+    ]);
+
+    await saveTransactionSplit(deps, alice, {
+      ...initialSplit,
+      items: [
+        { amount: '40.0000', category_id: category.category_id },
+        {
+          amount: '60.0000',
+          category_id: category.category_id,
+          description: 'Synthetic updated position',
+          note: 'Synthetic updated note',
+        },
+      ],
+    });
+    items = await splitQuery.get();
+    expect(items.docs.map((item) => item.get('amount')).sort()).toEqual([
+      '40.0000',
+      '60.0000',
+    ]);
+    expect(items.docs.some((item) => item.get('currency') === 'EUR')).toBe(
+      false,
+    );
+
+    await deleteTransactionSplit(deps, alice, {
+      budget_id: budget.budget_id,
+      transaction_id: saved.transaction_id,
+    });
+    expect((await splitQuery.get()).empty).toBe(true);
+    expect((await sourceRef.get()).data()).toMatchObject({
+      amount: '100.0000',
+      currency: 'EUR',
+    });
+  });
+
+  it('keeps hidden transactions hidden after their author leaves and expires at the stored instant', async () => {
+    const clock = new TestClock('2026-03-01T10:00:00.000Z');
+    const deps = testDeps(clock);
+    const budget = await createBudget(deps, alice, {
+      name: 'Synthetic hidden transaction budget',
+    });
+    const account = await createAccount(deps, alice, {
+      budget_id: budget.budget_id,
+      label: 'Synthetic hidden account',
+      currency: 'CHF',
+      account_type: 'CHECKING',
+    });
+    const category = await saveCategory(deps, alice, {
+      budget_id: budget.budget_id,
+      name: 'Synthetic hidden category',
+      kind: 'EXPENSE',
+      sort_order: 0,
+    });
+    const saved = await saveTransaction(deps, alice, {
+      budget_id: budget.budget_id,
+      account_id: account.account_id,
+      operation_date: '2026-03-01',
+      description: 'Synthetic surprise purchase',
+      amount: '25.00',
+      currency: 'CHF',
+      type: 'EXPENSE',
+      category_id: category.category_id,
+    });
+    const expiry = '2026-03-01T11:00:00.000Z';
+    await setTransactionHidden(deps, alice, {
+      budget_id: budget.budget_id,
+      transaction_id: saved.transaction_id,
+      hidden_mode: 'TRANSACTION',
+      hidden_until: expiry,
+    });
+    const invitation = await createInvitation(deps, alice, {
+      budget_id: budget.budget_id,
+    });
+    await acceptInvitation(deps, bob, invitation.token);
+    await leaveBudget(deps, alice, budget.budget_id);
+
+    const source = await adminDb()
+      .doc(`transactions/${saved.transaction_id}`)
+      .get();
+    expect(source.get('hidden_by_membership_id')).toBe(budget.membership_id);
+    expect(
+      isTransactionHidden(
+        source.get('hidden_mode'),
+        source.get('hidden_until').toDate().toISOString(),
+        new Date('2026-03-01T10:59:59.999Z'),
+      ),
+    ).toBe(true);
+    await expect(
+      setTransactionHidden(deps, bob, {
+        budget_id: budget.budget_id,
+        transaction_id: saved.transaction_id,
+        hidden_mode: 'TRANSACTION',
+        hidden_until: null,
+      }),
+    ).rejects.toMatchObject({ code: 'PERMISSION_DENIED' });
+
+    clock.set(expiry);
+    expect(
+      isTransactionHidden(
+        source.get('hidden_mode'),
+        source.get('hidden_until').toDate().toISOString(),
+        clock.now(),
+      ),
+    ).toBe(false);
+    expect(
+      (await adminDb().doc(`transactions/${saved.transaction_id}`).get()).get(
+        'hidden_by_membership_id',
+      ),
+    ).toBe(budget.membership_id);
   });
 });

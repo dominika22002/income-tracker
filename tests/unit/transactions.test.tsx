@@ -35,7 +35,7 @@ describe('TransactionsPanel', () => {
       tags: [],
     };
     const data: Pick<BudgetDataSource, 'subscribeTransactions'> = {
-      subscribeTransactions: vi.fn((_budgetId, onData) => {
+      subscribeTransactions: vi.fn((_budgetId, _membershipId, onData) => {
         onData([transaction]);
         return () => undefined;
       }),

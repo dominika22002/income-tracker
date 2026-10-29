@@ -88,6 +88,17 @@ describe('Firestore rules: budget access', () => {
         account_id: 'acc-a-1',
         amount: '1.00',
       });
+      await setDoc(doc(db, 'transactions/transaction-a-empty-tags'), {
+        budget_id: 'budget-a',
+        account_id: 'acc-a-1',
+        amount: '2.00',
+      });
+      await setDoc(doc(db, 'split_items/split-a-1'), {
+        budget_id: 'budget-a',
+        transaction_id: 'transaction-a-1',
+        amount: '1.00',
+        category_id: 'category-a-1',
+      });
       await setDoc(doc(db, 'categories/category-a-1'), {
         budget_id: 'budget-a',
         name: 'Synthetic category',
@@ -188,6 +199,7 @@ describe('Firestore rules: budget access', () => {
         'import_batches/batch-a-1',
         'import_periods/period-a-1',
         'transactions/transaction-a-1',
+        'split_items/split-a-1',
         'account_balance_snapshots/snapshot-a-1',
       ]) {
         await assertSucceeds(getDoc(doc(asUser('member-1'), path)));
@@ -204,6 +216,7 @@ describe('Firestore rules: budget access', () => {
         'categorization_rules/rule-a-1',
         'tags/tag-a-1',
         'transaction_tags/link-a-1',
+        'split_items/split-a-1',
       ];
       for (const path of paths) {
         await assertSucceeds(getDoc(doc(memberDb, path)));
@@ -214,6 +227,17 @@ describe('Firestore rules: budget access', () => {
         await assertFails(updateDoc(doc(ownerDb, path), { name: 'changed' }));
         await assertFails(deleteDoc(doc(ownerDb, path)));
       }
+    });
+
+    it('allows querying an empty tag list for an accessible transaction', async () => {
+      await assertSucceeds(
+        getDocs(
+          query(
+            collection(asUser('member-1'), 'transaction_tags'),
+            where('transaction_id', '==', 'transaction-a-empty-tags'),
+          ),
+        ),
+      );
     });
   });
 
