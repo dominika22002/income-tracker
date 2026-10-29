@@ -5,6 +5,12 @@ import {
   type Firestore,
 } from 'firebase-admin/firestore';
 import { createServerDeps, type ServerDeps } from '../../src/server/context';
+import type { ExchangeRatePoint } from '../../src/shared/domain/currency';
+
+const SYNTHETIC_RATES: ExchangeRatePoint[] = [
+  { date: '2026-03-09', base: 'EUR', quote: 'CHF', rate: '0.9123456789' },
+  { date: '2026-03-10', base: 'CHF', quote: 'EUR', rate: '1.095' },
+];
 
 const PROJECT_ID = 'demo-income-tracker';
 
@@ -66,7 +72,18 @@ export function testDeps(
   clock: TestClock = new TestClock(),
   db: Firestore = adminDb(),
 ): ServerDeps {
-  return createServerDeps(db, { now: clock.now, newId: sequentialIds() });
+  return createServerDeps(db, {
+    now: clock.now,
+    newId: sequentialIds(),
+    fetchExchangeRates: async (base, quote, from, to) =>
+      SYNTHETIC_RATES.filter(
+        (rate) =>
+          rate.base === base &&
+          rate.quote === quote &&
+          rate.date >= from &&
+          rate.date <= to,
+      ),
+  });
 }
 
 /**

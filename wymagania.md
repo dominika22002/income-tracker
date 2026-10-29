@@ -415,6 +415,7 @@ Plan prowadzi od prototypu do wydania aplikacji. MVP implementuje profile opisan
 6. Wyłącz potwierdzone transfery z sum przychodów i wydatków. Opłaty bankowe i różnice kursowe zapisuj jako oddzielne wydatki, które pozostają w raportach.
 7. Zapisuj salda kont z datą, walutą i źródłem. Oficjalne oszczędności pokazuj z najnowszego salda każdego konta oszczędnościowego osobno.
 8. Dodaj testy jednostkowe wyboru kursu, obliczeń dziesiętnych, zaokrągleń, klasyfikacji transferów i sald; dodaj testy integracyjne klienta API z atrapą odpowiedzi oraz trwałego zapisu kursów, przeliczeń, transferów i sald. Testy obejmują kurs z dnia transakcji, najbliższy wcześniejszy kurs, brak kursu, HALF_UP, konwersję tej samej waluty, pary transferu, różnicę walut oraz salda.
+9. TR-20 i TR-21 oceniaj tylko w zakresie danych dostępnych aplikacji. Aplikacja może raportować własne zdarzenia i wyliczać prognozę wyłącznie na podstawie wiarygodnej historii użycia; nie oznacza to rzeczywistych kosztów dostawcy. Bez wskazanego projektu rozliczeniowego i dostępu do jego metryk nie deklaruj rzeczywistego pomiaru kosztów ani nie konfiguruj produkcyjnych alertów. Eksport danych TR-22 oraz FR-55–FR-63 pozostaje Etapem 7.
 
 **Testy automatyczne:** E2E ustawień waluty, potwierdzenia/sprostowania/odrzucenia sugestii transferu i zapisu salda. Test kontraktowy z odpowiedzią API przechowywaną jako fixture; ręcznie sprawdź dostępność dostawcy zewnętrznego, ale nie uzależniaj testów jednostkowych od sieci.
 

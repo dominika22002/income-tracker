@@ -1,6 +1,15 @@
 import { randomUUID } from 'node:crypto';
 import type { Firestore } from 'firebase-admin/firestore';
 import { DomainError } from '../shared/domain/errors';
+import type { ExchangeRatePoint } from '../shared/domain/currency';
+import { fetchFrankfurterRateSeries } from './frankfurter';
+
+export type ExchangeRateFetcher = (
+  baseCurrency: string,
+  quoteCurrency: string,
+  fromDate: string,
+  toDate: string,
+) => Promise<ExchangeRatePoint[]>;
 
 export interface Caller {
   uid: string;
@@ -13,6 +22,7 @@ export interface ServerDeps {
   db: Firestore;
   now: () => Date;
   newId: () => string;
+  fetchExchangeRates: ExchangeRateFetcher;
 }
 
 export function createServerDeps(
@@ -23,6 +33,8 @@ export function createServerDeps(
     db,
     now: overrides.now ?? (() => new Date()),
     newId: overrides.newId ?? (() => randomUUID()),
+    fetchExchangeRates:
+      overrides.fetchExchangeRates ?? fetchFrankfurterRateSeries,
   };
 }
 

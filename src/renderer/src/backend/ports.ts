@@ -1,5 +1,6 @@
 import type {
   AccountView,
+  AccountBalanceView,
   CategorizationRuleView,
   CategoryView,
   BudgetBackend,
@@ -7,6 +8,7 @@ import type {
   MemberView,
   MyBudgetView,
   TransactionView,
+  TransferGroupView,
   UserPreferencesRecord,
 } from '../../../shared/contracts';
 
@@ -66,6 +68,16 @@ export interface BudgetDataSource {
   subscribeBudgetAccounts(
     budgetId: string,
     onData: (accounts: AccountView[]) => void,
+    onError: ErrorListener,
+  ): Unsubscribe;
+  subscribeAccountBalances(
+    accountIds: readonly string[],
+    onData: (balances: AccountBalanceView[]) => void,
+    onError: ErrorListener,
+  ): Unsubscribe;
+  subscribeTransferGroups(
+    budgetId: string,
+    onData: (groups: TransferGroupView[]) => void,
     onError: ErrorListener,
   ): Unsubscribe;
   subscribeCategories(

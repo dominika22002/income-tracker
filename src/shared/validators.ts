@@ -9,9 +9,12 @@ import type {
   CreateBudgetRequest,
   CreateInvitationRequest,
   DeleteTransactionSplitRequest,
+  GetTransactionConversionsRequest,
   OAuthCallbackPayload,
   RemoveMemberRequest,
   ReadLocalStatementRequest,
+  ReviewTransferRequest,
+  SaveAccountBalanceRequest,
   SaveCategorizationRuleRequest,
   SaveCategoryRequest,
   SaveTransactionSplitRequest,
@@ -722,4 +725,82 @@ export function validatePreferencesRequest(
   if (secondary.includes(primary)) return null;
 
   return { primary_currency: primary, secondary_currencies: [...secondary] };
+}
+
+export function validateSaveAccountBalanceRequest(
+  input: unknown,
+): SaveAccountBalanceRequest | null {
+  const record = asRecord(input);
+  if (
+    !record ||
+    !isUuid(record.budget_id) ||
+    !isUuid(record.account_id) ||
+    typeof record.balance_date !== 'string' ||
+    !isValidCalendarDate(record.balance_date) ||
+    !isAmount(record.balance_amount) ||
+    !isIsoCurrencyCode(record.currency)
+  ) {
+    return null;
+  }
+  return {
+    budget_id: record.budget_id,
+    account_id: record.account_id,
+    balance_date: record.balance_date,
+    balance_amount: record.balance_amount,
+    currency: record.currency,
+  };
+}
+
+export function validateGetTransactionConversionsRequest(
+  input: unknown,
+): GetTransactionConversionsRequest | null {
+  const record = asRecord(input);
+  if (!record || !isUuid(record.budget_id) || !isUuid(record.transaction_id)) {
+    return null;
+  }
+  return {
+    budget_id: record.budget_id,
+    transaction_id: record.transaction_id,
+  };
+}
+
+export function validateReviewTransferRequest(
+  input: unknown,
+): ReviewTransferRequest | null {
+  const record = asRecord(input);
+  if (
+    !record ||
+    !isUuid(record.budget_id) ||
+    !['CONFIRM_PAIR', 'REJECT', 'CONFIRM_UNPAIRED'].includes(
+      String(record.decision),
+    )
+  ) {
+    return null;
+  }
+  const request: ReviewTransferRequest = {
+    budget_id: record.budget_id,
+    decision: record.decision as ReviewTransferRequest['decision'],
+  };
+  if (record.decision === 'CONFIRM_UNPAIRED') {
+    if (
+      !isUuid(record.transaction_id) ||
+      record.outgoing_transaction_id !== undefined ||
+      record.incoming_transaction_id !== undefined
+    ) {
+      return null;
+    }
+    request.transaction_id = record.transaction_id;
+    return request;
+  }
+  if (
+    !isUuid(record.outgoing_transaction_id) ||
+    !isUuid(record.incoming_transaction_id) ||
+    record.outgoing_transaction_id === record.incoming_transaction_id ||
+    record.transaction_id !== undefined
+  ) {
+    return null;
+  }
+  request.outgoing_transaction_id = record.outgoing_transaction_id;
+  request.incoming_transaction_id = record.incoming_transaction_id;
+  return request;
 }

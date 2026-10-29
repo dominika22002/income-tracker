@@ -19,6 +19,7 @@ const KNOWN_CODES = new Set<DomainErrorCode>([
   'INVITATION_EMAIL_MISMATCH',
   'BUDGET_HAS_ACTIVE_MEMBERS',
   'DUPLICATE_REVIEW_REQUIRED',
+  'EXCHANGE_RATE_UNAVAILABLE',
 ]);
 
 /** Keeps the server's domain code so the UI can explain what went wrong. */
@@ -49,6 +50,10 @@ export function createCallableBackend(functions: Functions): BudgetBackend {
     updatePreferences: (request) => call('updatePreferences', request),
     createBudget: (request) => call('createBudget', request),
     createAccount: (request) => call('createAccount', request),
+    saveAccountBalance: (request) => call('saveAccountBalance', request),
+    getTransactionConversions: (request) =>
+      call('getTransactionConversions', request),
+    reviewTransfer: (request) => call('reviewTransfer', request),
     saveTransaction: (request) => call('saveTransaction', request),
     saveTransactionSplit: (request) => call('saveTransactionSplit', request),
     deleteTransactionSplit: (request) =>

@@ -259,11 +259,19 @@ Table transfer_groups {
   transfer_group_id uuid [pk]
   budget_id uuid [not null]
   status transfer_status [not null]
+  outgoing_transaction_id uuid
+  incoming_transaction_id uuid
+  transaction_id uuid
+  fx_difference_amount decimal(38,14)
+  fx_difference_currency char(3)
+  fx_rate_used decimal(19,10)
+  fx_rate_date date
+  fx_rate_id uuid
   created_by_membership_id uuid [not null]
   confirmed_by_membership_id uuid
   confirmed_at timestamptz
 
-  Note: 'Potwierdzona para wymaga dokładnie jednej transakcji OUTGOING i jednej INCOMING z tego samego budżetu. CONFIRMED_UNPAIRED wymaga jawnego potwierdzenia ostrzeżenia. Opłaty i różnice kwot są osobnymi transakcjami EXPENSE uwzględnianymi w raportach.'
+  Note: 'Kandydat nie zmienia klasyfikacji. Potwierdzona para wymaga dokładnie jednej transakcji OUTGOING i jednej INCOMING z tego samego budżetu. CONFIRMED_UNPAIRED wymaga jawnego potwierdzenia ostrzeżenia. Opłaty i dodatnie różnice kwot są osobnymi transakcjami EXPENSE uwzględnianymi w raportach.'
 }
 
 Table transactions {
@@ -289,6 +297,9 @@ Table transactions {
   hidden_by_membership_id uuid
   transfer_group_id uuid
   transfer_leg transfer_leg
+  fee decimal(19,4)
+  source_transaction_id uuid
+  generated_kind text
 
   indexes {
     (account_id, bank_transaction_id) [unique]
@@ -354,12 +365,30 @@ Table exchange_rates {
   }
 }
 
+Table exchange_rate_lookups {
+  lookup_id uuid [pk]
+  base_currency char(3) [not null]
+  quote_currency char(3) [not null]
+  requested_date date [not null]
+  found boolean [not null]
+  exchange_rate_id uuid
+  rate_date date
+  rate decimal(19,10)
+  fetched_at timestamptz [not null]
+
+  indexes {
+    (base_currency, quote_currency, requested_date) [unique]
+  }
+}
+
 Table transaction_conversions {
   transaction_id uuid [not null]
   target_currency char(3) [not null]
   exchange_rate_id uuid
+  rate_date date [not null]
   rate_used decimal(19,10) [not null]
-  converted_amount decimal(19,4) [not null]
+  converted_amount decimal(38,14) [not null]
+  display_amount decimal(19,4) [not null]
   calculated_at timestamptz [not null]
 
   indexes {
@@ -419,6 +448,11 @@ Ref: transactions.category_id > categories.category_id
 Ref: transactions.created_by_membership_id > memberships.membership_id
 Ref: transactions.hidden_by_membership_id > memberships.membership_id
 Ref: transactions.transfer_group_id > transfer_groups.transfer_group_id
+Ref: transfer_groups.outgoing_transaction_id > transactions.transaction_id
+Ref: transfer_groups.incoming_transaction_id > transactions.transaction_id
+Ref: transfer_groups.transaction_id > transactions.transaction_id
+Ref: transfer_groups.fx_rate_id > exchange_rates.exchange_rate_id
+Ref: transactions.source_transaction_id > transactions.transaction_id
 Ref: split_items.budget_id > budgets.budget_id
 Ref: split_items.transaction_id > transactions.transaction_id
 Ref: split_items.category_id > categories.category_id
@@ -430,6 +464,7 @@ Ref: account_balance_snapshots.import_batch_id > import_batches.import_batch_id
 Ref: account_balance_snapshots.created_by_membership_id > memberships.membership_id
 Ref: transaction_conversions.transaction_id > transactions.transaction_id
 Ref: transaction_conversions.exchange_rate_id > exchange_rates.exchange_rate_id
+Ref: exchange_rate_lookups.exchange_rate_id > exchange_rates.exchange_rate_id
 Ref: tags.budget_id > budgets.budget_id
 Ref: tags.created_by_membership_id > memberships.membership_id
 Ref: transaction_tags.transaction_id > transactions.transaction_id

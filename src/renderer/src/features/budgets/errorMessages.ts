@@ -20,6 +20,8 @@ const MESSAGES: Record<DomainErrorCode, string> = {
   BUDGET_HAS_ACTIVE_MEMBERS: 'The budget still has active members.',
   DUPLICATE_REVIEW_REQUIRED:
     'Possible duplicate transactions need an explicit include or exclude decision.',
+  EXCHANGE_RATE_UNAVAILABLE:
+    'No ECB rate is available for this date. The source amount was not changed.',
 };
 
 /** Never reports success: unknown failures are shown as failures. */

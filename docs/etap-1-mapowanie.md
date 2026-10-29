@@ -43,6 +43,19 @@ Uzasadnienia odstępstw od „1 tabela = 1 kolekcja":
 
 Tabele Etapu 2+ (`accounts`, `import_*`, `categories`, `transactions`, …) **nie są tworzone**; ich przyszłe miejsce: podkolekcje `budgets/{budget_id}/…` (kaskadowe usuwanie jednym `recursiveDelete`). Istniejąca ścieżka testowa Etapu 0 `budget_records/{budgetId}/items/{itemId}` pozostaje jako atrapa „danych budżetu" do testów dostępu (reguła: aktywny członek).
 
+### Mapowanie danych Etapu 5
+
+| Tabela DBML | Firestore | Klucz / ograniczenie | Zapis i widoczność |
+|---|---|---|---|
+| `user_preferences` | `user_preferences/{uid}` | jeden dokument na użytkownika | tylko własny odczyt; mutacje przez callable |
+| `account_balance_snapshots` | `account_balance_snapshots/{sha256(account_id, date)}` | jedno saldo na konto i datę; import oraz zapis ręczny współdzielą klucz | aktywni członkowie budżetu odczytują; zapis serwerowy |
+| `exchange_rates` | `exchange_rates/{stable uuid}` | para, faktyczna data i provider `ECB` | cache serwerowy; bez odczytu klienta |
+| `exchange_rate_lookups` | `exchange_rate_lookups/{stable uuid}` | para i żądana data, także negatywny wynik cache | tylko serwer; żądanie zewnętrzne zawiera kody i daty |
+| `transaction_conversions` | `transaction_conversions/{stable uuid}` | transakcja i waluta docelowa | zapis serwerowy po ponownej walidacji członkostwa i niezmienności kwoty źródłowej |
+| `transfer_groups` | `transfer_groups/{stable uuid}` | stabilny identyfikator pary albo nogi jednostronnej | aktywny członek odczytuje; mutacje serwerowe; potwierdzenie atomowo ustawia nogi transakcji |
+
+Opłaty i dodatnia różnica kursowa przy potwierdzonym transferze są osobnymi rekordami `transactions` typu `EXPENSE`, powiązanymi przez `transfer_group_id`. Sama sugestia nie zapisuje klasyfikacji ani nie zmienia sum.
+
 ## 3. Zapytania i indeksy
 
 | Zapytanie                                                                           | Wykonuje       | Indeks                                                       |

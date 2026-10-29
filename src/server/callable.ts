@@ -9,6 +9,7 @@ import {
 } from './invitations';
 import { createBudget } from './budgets';
 import { createAccount } from './accounts';
+import { saveAccountBalance } from './balances';
 import { archiveCategory, saveCategory } from './categories';
 import { saveCategorizationRule } from './categorization';
 import { commitCsvImport } from './imports';
@@ -21,6 +22,8 @@ import {
 import type { Caller } from './context';
 import { leaveBudget, removeMember } from './memberships';
 import { ensureUserProfile, updatePreferences } from './profile';
+import { getTransactionConversions } from './conversions';
+import { reviewTransfer } from './transfers';
 import { deleteMyProfile, type ProfileDeletionDeps } from './profileDeletion';
 
 /** Subset of the callable-function auth context that the services need. */
@@ -46,6 +49,9 @@ export const CALLABLE_NAMES = [
   'updatePreferences',
   'createBudget',
   'createAccount',
+  'saveAccountBalance',
+  'getTransactionConversions',
+  'reviewTransfer',
   'saveTransaction',
   'saveTransactionSplit',
   'deleteTransactionSplit',
@@ -87,6 +93,12 @@ export function createHandlers(
       createBudget(deps, callerFromAuth(auth), data),
     createAccount: (auth, data) =>
       createAccount(deps, callerFromAuth(auth), data),
+    saveAccountBalance: (auth, data) =>
+      saveAccountBalance(deps, callerFromAuth(auth), data),
+    getTransactionConversions: (auth, data) =>
+      getTransactionConversions(deps, callerFromAuth(auth), data),
+    reviewTransfer: (auth, data) =>
+      reviewTransfer(deps, callerFromAuth(auth), data),
     saveTransaction: (auth, data) =>
       saveTransaction(deps, callerFromAuth(auth), data),
     saveTransactionSplit: (auth, data) =>
@@ -160,6 +172,7 @@ const CODE_MAP: Record<DomainErrorCode, CallableErrorCode> = {
   INVITATION_EXPIRED: 'failed-precondition',
   BUDGET_HAS_ACTIVE_MEMBERS: 'failed-precondition',
   DUPLICATE_REVIEW_REQUIRED: 'failed-precondition',
+  EXCHANGE_RATE_UNAVAILABLE: 'failed-precondition',
 };
 
 /** Domain errors keep their code; anything else is reported as opaque. */
@@ -186,6 +199,10 @@ export function createLocalBackend(
     updatePreferences: (request) => call('updatePreferences', request),
     createBudget: (request) => call('createBudget', request),
     createAccount: (request) => call('createAccount', request),
+    saveAccountBalance: (request) => call('saveAccountBalance', request),
+    getTransactionConversions: (request) =>
+      call('getTransactionConversions', request),
+    reviewTransfer: (request) => call('reviewTransfer', request),
     saveTransaction: (request) => call('saveTransaction', request),
     saveTransactionSplit: (request) => call('saveTransactionSplit', request),
     deleteTransactionSplit: (request) =>

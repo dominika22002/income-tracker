@@ -137,6 +137,7 @@ export interface TransactionView {
   description: string;
   amount: string;
   currency: string;
+  fee?: string | null;
   type: StatementTransactionType;
   category_id: string | null;
   category_name: string | null;
@@ -148,6 +149,37 @@ export interface TransactionView {
   hidden_by_membership_id?: string | null;
   hidden_for_viewer?: boolean;
   split_items?: SplitItemView[];
+  transfer_group_id?: string | null;
+  transfer_leg?: 'OUTGOING' | 'INCOMING' | null;
+}
+
+export interface AccountBalanceView {
+  snapshot_id: string;
+  account_id: string;
+  balance_date: string;
+  balance_amount: string;
+  currency: string;
+  source: 'STATEMENT' | 'MANUAL';
+}
+
+export interface TransferGroupView {
+  transfer_group_id: string;
+  budget_id: string;
+  status: 'CANDIDATE' | 'CONFIRMED' | 'CONFIRMED_UNPAIRED' | 'REJECTED';
+  outgoing_transaction_id: string | null;
+  incoming_transaction_id: string | null;
+  transaction_id: string | null;
+}
+
+export interface TransactionConversionView {
+  transaction_id: string;
+  target_currency: string;
+  exchange_rate_id: string | null;
+  rate_used: string;
+  rate_date: string;
+  converted_amount: string;
+  display_amount: string;
+  calculated_at: string;
 }
 
 export type ExpenseFrequency = 'RECURRING' | 'IRREGULAR' | 'ONE_TIME';
@@ -211,7 +243,8 @@ export type DomainErrorCode =
   | 'INVITATION_EXPIRED'
   | 'INVITATION_EMAIL_MISMATCH'
   | 'BUDGET_HAS_ACTIVE_MEMBERS'
-  | 'DUPLICATE_REVIEW_REQUIRED';
+  | 'DUPLICATE_REVIEW_REQUIRED'
+  | 'EXCHANGE_RATE_UNAVAILABLE';
 
 export interface CreateBudgetRequest {
   name: string;
@@ -267,6 +300,41 @@ export interface CreateAccountRequest {
 
 export interface CreateAccountResult {
   account_id: string;
+}
+
+export interface SaveAccountBalanceRequest {
+  budget_id: string;
+  account_id: string;
+  balance_date: string;
+  balance_amount: string;
+  currency: string;
+}
+
+export interface SaveAccountBalanceResult {
+  snapshot_id: string;
+}
+
+export interface GetTransactionConversionsRequest {
+  budget_id: string;
+  transaction_id: string;
+}
+
+export interface GetTransactionConversionsResult {
+  conversions: TransactionConversionView[];
+  unavailable_currencies: string[];
+}
+
+export interface ReviewTransferRequest {
+  budget_id: string;
+  decision: 'CONFIRM_PAIR' | 'REJECT' | 'CONFIRM_UNPAIRED';
+  outgoing_transaction_id?: string;
+  incoming_transaction_id?: string;
+  transaction_id?: string;
+}
+
+export interface ReviewTransferResult {
+  transfer_group_id: string;
+  status: TransferGroupView['status'];
 }
 
 export interface SaveTransactionRequest {
@@ -399,6 +467,13 @@ export interface BudgetBackend {
   ): Promise<UserPreferencesRecord>;
   createBudget(request: CreateBudgetRequest): Promise<CreateBudgetResult>;
   createAccount(request: CreateAccountRequest): Promise<CreateAccountResult>;
+  saveAccountBalance(
+    request: SaveAccountBalanceRequest,
+  ): Promise<SaveAccountBalanceResult>;
+  getTransactionConversions(
+    request: GetTransactionConversionsRequest,
+  ): Promise<GetTransactionConversionsResult>;
+  reviewTransfer(request: ReviewTransferRequest): Promise<ReviewTransferResult>;
   saveTransaction(
     request: SaveTransactionRequest,
   ): Promise<SaveTransactionResult>;

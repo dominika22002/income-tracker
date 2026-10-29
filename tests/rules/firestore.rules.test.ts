@@ -121,6 +121,12 @@ describe('Firestore rules: budget access', () => {
         account_id: 'acc-a-1',
         balance_amount: '10.00',
       });
+      await setDoc(doc(db, 'transfer_groups/transfer-a-1'), {
+        budget_id: 'budget-a',
+        status: 'CONFIRMED',
+        outgoing_transaction_id: 'transaction-a-1',
+        incoming_transaction_id: 'transaction-a-empty-tags',
+      });
     });
   });
 
@@ -201,6 +207,7 @@ describe('Firestore rules: budget access', () => {
         'transactions/transaction-a-1',
         'split_items/split-a-1',
         'account_balance_snapshots/snapshot-a-1',
+        'transfer_groups/transfer-a-1',
       ]) {
         await assertSucceeds(getDoc(doc(asUser('member-1'), path)));
         await assertFails(getDoc(doc(asUser('other-owner'), path)));
@@ -373,6 +380,9 @@ describe('Firestore rules: budget access', () => {
       );
       await assertFails(
         setDoc(doc(db, 'transactions/forged'), { budget_id: 'budget-a' }),
+      );
+      await assertFails(
+        setDoc(doc(db, 'transfer_groups/forged'), { budget_id: 'budget-a' }),
       );
     });
 

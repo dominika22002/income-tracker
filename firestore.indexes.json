@@ -16,6 +16,16 @@
         { "fieldPath": "budget_id", "order": "ASCENDING" },
         { "fieldPath": "transaction_id", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "exchange_rates",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "base_currency", "order": "ASCENDING" },
+        { "fieldPath": "quote_currency", "order": "ASCENDING" },
+        { "fieldPath": "provider", "order": "ASCENDING" },
+        { "fieldPath": "rate_date", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

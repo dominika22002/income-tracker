@@ -111,6 +111,11 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    match /transfer_groups/{transferGroupId} {
+      allow read: if isActiveMember(resource.data.budget_id);
+      allow write: if false;
+    }
+
     match /import_batch_file_hashes/{hashId} {
       allow read, write: if false;
     }

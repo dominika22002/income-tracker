@@ -11,12 +11,14 @@ import {
 } from 'firebase/firestore';
 import type {
   AccountView,
+  AccountBalanceView,
   CategorizationRuleView,
   CategoryView,
   InvitationView,
   MemberView,
   MyBudgetView,
   TransactionView,
+  TransferGroupView,
   UserPreferencesRecord,
 } from '../../../shared/contracts';
 import { compareMembersForSuccession } from '../../../shared/domain/membership';
@@ -309,6 +311,7 @@ export function createFirestoreDataSource(db: Firestore): BudgetDataSource {
                       description: transaction.get('description') as string,
                       amount: transaction.get('amount') as string,
                       currency: transaction.get('currency') as string,
+                      fee: (transaction.get('fee') as string | null) ?? null,
                       type: transaction.get('type') as TransactionView['type'],
                       category_id: categoryId,
                       category_name: categoryId
@@ -333,6 +336,13 @@ export function createFirestoreDataSource(db: Firestore): BudgetDataSource {
                       split_items: (
                         splitItemsByTransaction.get(transaction.id) ?? []
                       ).sort((left, right) => left.position - right.position),
+                      transfer_group_id:
+                        (transaction.get('transfer_group_id') as
+                          string | null) ?? null,
+                      transfer_leg:
+                        (transaction.get(
+                          'transfer_leg',
+                        ) as TransactionView['transfer_leg']) ?? null,
                     };
                   })
                   .sort((a, b) =>
@@ -403,6 +413,64 @@ export function createFirestoreDataSource(db: Firestore): BudgetDataSource {
             }))
             .sort((a, b) => a.label.localeCompare(b.label, 'pl'));
           onData(accounts);
+        },
+        onError,
+      );
+    },
+
+    subscribeAccountBalances(accountIds, onData, onError) {
+      if (accountIds.length === 0) {
+        onData([]);
+        return () => undefined;
+      }
+      const byAccount = new Map<string, AccountBalanceView[]>();
+      const publish = () => onData([...byAccount.values()].flat());
+      const unsubs = accountIds.map((accountId) =>
+        onSnapshot(
+          query(
+            collection(db, 'account_balance_snapshots'),
+            where('account_id', '==', accountId),
+          ),
+          (snapshot) => {
+            byAccount.set(
+              accountId,
+              snapshot.docs.map((balance) => ({
+                snapshot_id: balance.id,
+                account_id: accountId,
+                balance_date: balance.get('balance_date') as string,
+                balance_amount: balance.get('balance_amount') as string,
+                currency: balance.get('currency') as string,
+                source: balance.get('source') as AccountBalanceView['source'],
+              })),
+            );
+            publish();
+          },
+          onError,
+        ),
+      );
+      return () => unsubs.forEach((unsubscribe) => unsubscribe());
+    },
+
+    subscribeTransferGroups(budgetId, onData, onError) {
+      return onSnapshot(
+        query(
+          collection(db, 'transfer_groups'),
+          where('budget_id', '==', budgetId),
+        ),
+        (snapshot) => {
+          onData(
+            snapshot.docs.map((group) => ({
+              transfer_group_id: group.id,
+              budget_id: budgetId,
+              status: group.get('status') as TransferGroupView['status'],
+              outgoing_transaction_id:
+                (group.get('outgoing_transaction_id') as string | null) ?? null,
+              incoming_transaction_id:
+                (group.get('incoming_transaction_id') as string | null) ?? null,
+              transaction_id:
+                (group.get('transaction_id') as string | null) ?? null,
+            })),
+          );
         },
         onError,
       );

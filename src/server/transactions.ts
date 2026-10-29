@@ -57,6 +57,12 @@ export async function saveTransaction(
   if (!request) {
     throw new DomainError('INVALID_ARGUMENT', 'Invalid transaction request.');
   }
+  if (request.type === 'TRANSFER') {
+    throw new DomainError(
+      'INVALID_ARGUMENT',
+      'Confirm a transfer from the transfer review screen.',
+    );
+  }
   const transactionId = request.transaction_id ?? deps.newId();
   const transactionRef = deps.db.doc(
     `${COLLECTIONS.transactions}/${transactionId}`,
@@ -88,6 +94,12 @@ export async function saveTransaction(
     }
     if (existing.exists && existing.get('budget_id') !== request.budget_id) {
       throw new DomainError('NOT_FOUND');
+    }
+    if (existing.exists && existing.get('transfer_group_id') != null) {
+      throw new DomainError(
+        'INVALID_TRANSITION',
+        'Confirmed transfer legs cannot be edited as ordinary transactions.',
+      );
     }
     const existingSplitItems = existing.exists
       ? await tx.get(
@@ -383,6 +395,12 @@ export async function saveTransactionSplit(
       throw new DomainError('NOT_FOUND');
     }
     assertHiddenTransactionAuthor(transaction, actor.membership_id, deps.now());
+    if (transaction.get('transfer_group_id') != null) {
+      throw new DomainError(
+        'INVALID_TRANSITION',
+        'Confirmed transfer legs cannot be split.',
+      );
+    }
     const existingItems = await tx.get(splitQuery);
     const categories = await tx.get(
       deps.db

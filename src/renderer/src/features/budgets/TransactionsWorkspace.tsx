@@ -4,10 +4,12 @@ import type {
   CategorizationRuleView,
   CategoryKind,
   CategoryView,
+  TransactionConversionView,
   MyBudgetView,
   SaveCategorizationRuleRequest,
   StatementTransactionType,
   TransactionView,
+  TransferGroupView,
 } from '../../../../shared/contracts';
 import {
   filterAndSortTransactions,
@@ -27,6 +29,7 @@ import { describeError } from './errorMessages';
 import { HiddenTransactionsNotice } from './HiddenTransactionsNotice';
 import { TransactionSplitEditor } from './TransactionSplitEditor';
 import { TransactionVisibilityEditor } from './TransactionVisibilityEditor';
+import { AccountBalancesPanel, TransferSuggestionsPanel } from './Stage5Panels';
 
 const TYPES: StatementTransactionType[] = ['EXPENSE', 'INCOME', 'TRANSFER'];
 const TYPE_LABELS: Record<StatementTransactionType, string> = {
@@ -112,7 +115,7 @@ export function TransactionsWorkspace({
     budgets?.find((budget) => budget.budget_id === budgetId)?.membership_id ??
     '';
   const [activeTab, setActiveTab] = useState<
-    'transactions' | 'categories' | 'rules'
+    'transactions' | 'categories' | 'rules' | 'transfers' | 'balances'
   >('transactions');
   const [transactionsSnapshot, setTransactionsSnapshot] = useState<{
     budgetId: string;
@@ -121,6 +124,14 @@ export function TransactionsWorkspace({
   const [accounts, setAccounts] = useState<AccountView[]>([]);
   const [categories, setCategories] = useState<CategoryView[]>([]);
   const [rules, setRules] = useState<CategorizationRuleView[]>([]);
+  const [transferGroups, setTransferGroups] = useState<TransferGroupView[]>([]);
+  const [conversionsByTransaction, setConversionsByTransaction] = useState<
+    Record<string, TransactionConversionView[]>
+  >({});
+  const [unavailableRates, setUnavailableRates] = useState<
+    Record<string, string[]>
+  >({});
+  const [convertingId, setConvertingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState<TransactionFilters>({});
   const [sort, setSort] = useState<TransactionSort>({
@@ -193,10 +204,16 @@ export function TransactionsWorkspace({
       setRules,
       (failure) => setError(describeError(failure)),
     );
+    const unsubscribeTransferGroups = services.data.subscribeTransferGroups(
+      budgetId,
+      setTransferGroups,
+      (failure) => setError(describeError(failure)),
+    );
     return () => {
       unsubscribeAccounts();
       unsubscribeCategories();
       unsubscribeRules();
+      unsubscribeTransferGroups();
     };
   }, [budgetId, services.data]);
 
@@ -249,6 +266,29 @@ export function TransactionsWorkspace({
   const currentBudget = budgets?.find(
     (budget) => budget.budget_id === budgetId,
   );
+
+  async function loadConversions(transaction: TransactionView) {
+    setConvertingId(transaction.transaction_id);
+    setError(null);
+    try {
+      const result = await services.backend.getTransactionConversions({
+        budget_id: transaction.budget_id,
+        transaction_id: transaction.transaction_id,
+      });
+      setConversionsByTransaction((current) => ({
+        ...current,
+        [transaction.transaction_id]: result.conversions,
+      }));
+      setUnavailableRates((current) => ({
+        ...current,
+        [transaction.transaction_id]: result.unavailable_currencies,
+      }));
+    } catch (failure) {
+      setError(describeError(failure));
+    } finally {
+      setConvertingId(null);
+    }
+  }
 
   function startCreate() {
     setEditing(null);
@@ -571,7 +611,34 @@ export function TransactionsWorkspace({
             >
               Reguły
             </button>
+            <button
+              type="button"
+              aria-pressed={activeTab === 'transfers'}
+              onClick={() => setActiveTab('transfers')}
+            >
+              Transfery
+            </button>
+            <button
+              type="button"
+              aria-pressed={activeTab === 'balances'}
+              onClick={() => setActiveTab('balances')}
+            >
+              Salda kont
+            </button>
           </nav>
+
+          {activeTab === 'transfers' && (
+            <TransferSuggestionsPanel
+              budget={currentBudget}
+              transactions={visibleTransactions ?? []}
+              groups={transferGroups}
+              services={services}
+            />
+          )}
+
+          {activeTab === 'balances' && (
+            <AccountBalancesPanel accounts={accounts} services={services} />
+          )}
 
           {activeTab === 'transactions' && (
             <section aria-label="Lista transakcji">
@@ -813,6 +880,38 @@ export function TransactionsWorkspace({
                         Identyfikator bankowy:{' '}
                         {transaction.bank_transaction_id ?? '—'}
                       </p>
+                      <p>
+                        Kwota źródłowa: {transaction.amount}{' '}
+                        {transaction.currency}
+                      </p>
+                      <button
+                        type="button"
+                        disabled={convertingId === transaction.transaction_id}
+                        onClick={() => void loadConversions(transaction)}
+                      >
+                        {convertingId === transaction.transaction_id
+                          ? 'Przeliczanie…'
+                          : 'Pokaż przeliczenia'}
+                      </button>
+                      {(
+                        conversionsByTransaction[transaction.transaction_id] ??
+                        []
+                      ).map((conversion) => (
+                        <p key={conversion.target_currency}>
+                          {conversion.display_amount}{' '}
+                          {conversion.target_currency} · kurs{' '}
+                          {conversion.rate_used} z {conversion.rate_date}
+                        </p>
+                      ))}
+                      {unavailableRates[transaction.transaction_id]?.length ? (
+                        <p role="status">
+                          Brak kursu ECB dla:{' '}
+                          {unavailableRates[transaction.transaction_id].join(
+                            ', ',
+                          )}
+                          . Wartość źródłowa nie została zmieniona.
+                        </p>
+                      ) : null}
                       {(transaction.split_items?.length ?? 0) > 0 && (
                         <section aria-label="Pozycje podziału">
                           <h5>Pozycje podziału</h5>
@@ -834,20 +933,22 @@ export function TransactionsWorkspace({
                       )}
                       {!transaction.hidden_for_viewer && (
                         <>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setSplitEditorId((current) =>
-                                current === transaction.transaction_id
-                                  ? null
-                                  : transaction.transaction_id,
-                              )
-                            }
-                          >
-                            {(transaction.split_items?.length ?? 0) > 0
-                              ? 'Edytuj podział'
-                              : 'Podziel transakcję'}
-                          </button>
+                          {!transaction.transfer_group_id && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setSplitEditorId((current) =>
+                                  current === transaction.transaction_id
+                                    ? null
+                                    : transaction.transaction_id,
+                                )
+                              }
+                            >
+                              {(transaction.split_items?.length ?? 0) > 0
+                                ? 'Edytuj podział'
+                                : 'Podziel transakcję'}
+                            </button>
+                          )}
                           <button
                             type="button"
                             onClick={() =>
@@ -866,12 +967,14 @@ export function TransactionsWorkspace({
                               ? 'Zmień termin ukrycia'
                               : 'Ukryj'}
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => startEdit(transaction)}
-                          >
-                            Edytuj transakcję
-                          </button>
+                          {!transaction.transfer_group_id && (
+                            <button
+                              type="button"
+                              onClick={() => startEdit(transaction)}
+                            >
+                              Edytuj transakcję
+                            </button>
+                          )}
                         </>
                       )}
                       {splitEditorId === transaction.transaction_id && (
@@ -1026,11 +1129,13 @@ export function TransactionsWorkspace({
                         }));
                       }}
                     >
-                      {TYPES.map((type) => (
-                        <option key={type} value={type}>
-                          {TYPE_LABELS[type]}
-                        </option>
-                      ))}
+                      {TYPES.filter((type) => type !== 'TRANSFER').map(
+                        (type) => (
+                          <option key={type} value={type}>
+                            {TYPE_LABELS[type]}
+                          </option>
+                        ),
+                      )}
                     </select>
                   </label>
                   <label>
