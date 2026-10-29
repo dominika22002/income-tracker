@@ -437,6 +437,8 @@ Plan prowadzi od prototypu do wydania aplikacji. MVP implementuje profile opisan
 
 **Testy automatyczne:** testy jednostkowe raportów dla pustego okresu, granic dat, kategorii, limitów, kosztów cyklicznych i szacunku; integracyjne dla query budżetu i konwersji walut; E2E dla wyboru okresu, wykresu, wykorzystania limitu i rozróżnienia szacunku od oszczędności. Porównaj sumy z niezależnymi, ręcznie wyliczonymi oczekiwanymi wynikami fixture'ów.
 
+**Reguły prezentacji:** raporty prezentują sumy w walucie podstawowej użytkownika; przeliczenia są pobierane dla daty operacji, a brak kursu jest zgłaszany zamiast zastępowany kwotą źródłową. Limit ma zakres `MONTH` zgodny z DBML i jego użycie jest liczone dla wybranego miesiąca w walucie zapisanego limitu. Szacunek miesięczny to średni przepływ netto z wybranej liczby pełnych miesięcy przed miesiącem odniesienia; miesiące bez danych mają wynik zero, a wszystkie wydatki, również nieregularne i jednorazowe, obniżają tę średnią. Typ kategorii grupuje cykliczne koszty, ale nie wyłącza ich z rzeczywistych wydatków. Transakcje ukryte pozostają w sumach; dla osoby bez dostępu szczegóły i kategoria całej ukrytej transakcji są maskowane. Potwierdzone transfery są zapisane jako `TRANSFER` i pomijane, natomiast osobne opłaty i różnice FX pozostają wydatkami.
+
 **Ukończ etap, gdy:** wszystkie widoki i raporty korzystają z tych samych reguł sumowania, nie gubią wydatków ukrytych ani jednorazowych i nie liczą transferu jako dochodu/wydatku.
 
 ### Etap 7 — eksport danych i raportów

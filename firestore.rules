@@ -86,6 +86,11 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    match /spending_limits/{limitId} {
+      allow read: if isActiveMember(resource.data.budget_id);
+      allow write: if false;
+    }
+
     match /categorization_rules/{ruleId} {
       allow read: if isActiveMember(resource.data.budget_id);
       allow write: if false;

@@ -4,6 +4,7 @@ import type {
   CategorizationRuleView,
   CategoryKind,
   CategoryView,
+  ExpenseFrequency,
   TransactionConversionView,
   MyBudgetView,
   SaveCategorizationRuleRequest,
@@ -47,6 +48,7 @@ interface TransactionForm {
   currency: string;
   type: StatementTransactionType;
   category_id: string;
+  expense_frequency: TransactionView['expense_frequency'];
   note: string;
   tags: string;
 }
@@ -60,6 +62,7 @@ function emptyForm(account?: AccountView): TransactionForm {
     currency: account?.currency ?? 'CHF',
     type: 'EXPENSE',
     category_id: '',
+    expense_frequency: null,
     note: '',
     tags: '',
   };
@@ -169,6 +172,8 @@ export function TransactionsWorkspace({
   const [notice, setNotice] = useState<string | null>(null);
   const [categoryName, setCategoryName] = useState('');
   const [categoryKind, setCategoryKind] = useState<CategoryKind>('EXPENSE');
+  const [categoryNature, setCategoryNature] =
+    useState<CategoryView['expense_nature']>(null);
   const [ruleField, setRuleField] =
     useState<SaveCategorizationRuleRequest['match_field']>('DESCRIPTION');
   const [ruleOperator, setRuleOperator] =
@@ -309,6 +314,7 @@ export function TransactionsWorkspace({
       currency: transaction.currency,
       type: transaction.type,
       category_id: transaction.category_id ?? '',
+      expense_frequency: transaction.expense_frequency ?? null,
       note: transaction.note ?? '',
       tags: transaction.tags.join(', '),
     });
@@ -339,6 +345,8 @@ export function TransactionsWorkspace({
       amount: form.amount,
       currency: form.currency,
       type: form.type,
+      expense_frequency:
+        form.type === 'EXPENSE' ? form.expense_frequency : null,
       category_id: editing ? selectedCategory : selectedCategory || undefined,
       note: form.note || null,
       tags: form.tags
@@ -400,7 +408,11 @@ export function TransactionsWorkspace({
 
   async function saveCategory(
     category: CategoryView,
-    changes: { name?: string; sort_order?: number },
+    changes: {
+      name?: string;
+      sort_order?: number;
+      expense_nature?: CategoryView['expense_nature'];
+    },
   ) {
     setSaving(true);
     setError(null);
@@ -411,6 +423,9 @@ export function TransactionsWorkspace({
         name: changes.name ?? category.name,
         kind: category.kind,
         sort_order: changes.sort_order ?? category.sort_order,
+        ...(changes.expense_nature === undefined
+          ? {}
+          : { expense_nature: changes.expense_nature }),
       });
     } catch (failure) {
       setError(describeError(failure));
@@ -429,6 +444,9 @@ export function TransactionsWorkspace({
         budget_id: budgetId,
         name: categoryName,
         kind: categoryKind,
+        ...(categoryKind === 'EXPENSE'
+          ? { expense_nature: categoryNature }
+          : {}),
         sort_order:
           Math.max(
             -1,
@@ -438,6 +456,7 @@ export function TransactionsWorkspace({
           ) + 1,
       });
       setCategoryName('');
+      setCategoryNature(null);
       setNotice('Kategoria została dodana.');
     } catch (failure) {
       setError(describeError(failure));
@@ -747,6 +766,27 @@ export function TransactionsWorkspace({
                     ))}
                   </select>
                 </label>
+                {form.type === 'EXPENSE' && (
+                  <label>
+                    Częstotliwość wydatku
+                    <select
+                      aria-label="Częstotliwość transakcji"
+                      value={form.expense_frequency ?? ''}
+                      onChange={(event) =>
+                        setForm((current) => ({
+                          ...current,
+                          expense_frequency: (event.target.value ||
+                            null) as ExpenseFrequency | null,
+                        }))
+                      }
+                    >
+                      <option value="">Nieokreślona</option>
+                      <option value="RECURRING">Cykliczna</option>
+                      <option value="IRREGULAR">Nieregularna</option>
+                      <option value="ONE_TIME">Jednorazowa</option>
+                    </select>
+                  </label>
+                )}
                 <label>
                   Sortuj według
                   <select
@@ -1268,9 +1308,11 @@ export function TransactionsWorkspace({
                   <select
                     aria-label="Typ nowej kategorii"
                     value={categoryKind}
-                    onChange={(event) =>
-                      setCategoryKind(event.target.value as CategoryKind)
-                    }
+                    onChange={(event) => {
+                      const kind = event.target.value as CategoryKind;
+                      setCategoryKind(kind);
+                      if (kind !== 'EXPENSE') setCategoryNature(null);
+                    }}
                   >
                     {TYPES.map((type) => (
                       <option key={type} value={type}>
@@ -1279,6 +1321,26 @@ export function TransactionsWorkspace({
                     ))}
                   </select>
                 </label>
+                {categoryKind === 'EXPENSE' && (
+                  <label>
+                    Charakter wydatku
+                    <select
+                      aria-label="Charakter nowej kategorii"
+                      value={categoryNature ?? ''}
+                      onChange={(event) =>
+                        setCategoryNature(
+                          (event.target.value ||
+                            null) as CategoryView['expense_nature'],
+                        )
+                      }
+                    >
+                      <option value="">Nieokreślony</option>
+                      <option value="FIXED">Stały</option>
+                      <option value="VARIABLE">Zmienny</option>
+                      <option value="DISCRETIONARY">Uznaniowy</option>
+                    </select>
+                  </label>
+                )}
                 <button type="submit" disabled={saving}>
                   Dodaj kategorię
                 </button>
@@ -1467,7 +1529,11 @@ function CategoryRow({
   saving: boolean;
   onSave: (
     category: CategoryView,
-    changes: { name?: string; sort_order?: number },
+    changes: {
+      name?: string;
+      sort_order?: number;
+      expense_nature?: CategoryView['expense_nature'];
+    },
   ) => Promise<void>;
   onArchive: (category: CategoryView) => Promise<void>;
   onMove: (category: CategoryView, direction: -1 | 1) => Promise<void>;
@@ -1511,6 +1577,27 @@ function CategoryRow({
             {category.sort_order}
             {category.archived_at ? ' · archiwalna' : ''}
           </span>
+          {category.kind === 'EXPENSE' && (
+            <label>
+              Charakter wydatku
+              <select
+                aria-label={`Charakter wydatku kategorii ${category.name}`}
+                disabled={saving || category.archived_at !== null}
+                value={category.expense_nature ?? ''}
+                onChange={(event) => {
+                  const nature = event.target.value
+                    ? (event.target.value as CategoryView['expense_nature'])
+                    : null;
+                  void onSave(category, { expense_nature: nature });
+                }}
+              >
+                <option value="">Nieokreślony</option>
+                <option value="FIXED">Stały</option>
+                <option value="VARIABLE">Zmienny</option>
+                <option value="DISCRETIONARY">Uznaniowy</option>
+              </select>
+            </label>
+          )}
           {category.archived_at === null && (
             <>
               <button

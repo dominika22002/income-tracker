@@ -194,6 +194,7 @@ export function App({
               [
                 ['overview', 'Przegląd'],
                 ['transactions', 'Transakcje'],
+                ['reports', 'Raporty'],
                 ['budgets', 'Budżety'],
                 ['imports', 'Importy'],
                 ['settings', 'Ustawienia'],

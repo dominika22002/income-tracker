@@ -51,6 +51,7 @@ export function createCallableBackend(functions: Functions): BudgetBackend {
     createBudget: (request) => call('createBudget', request),
     createAccount: (request) => call('createAccount', request),
     saveAccountBalance: (request) => call('saveAccountBalance', request),
+    saveSpendingLimit: (request) => call('saveSpendingLimit', request),
     getTransactionConversions: (request) =>
       call('getTransactionConversions', request),
     reviewTransfer: (request) => call('reviewTransfer', request),

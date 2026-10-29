@@ -159,12 +159,20 @@ export function maskTransactionsForMember(
         transaction.hidden_mode === 'TRANSACTION'
           ? null
           : transaction.category_name,
+      expense_frequency:
+        transaction.hidden_mode === 'TRANSACTION'
+          ? null
+          : transaction.expense_frequency,
       hidden_by_membership_id: null,
       hidden_for_viewer: true,
       split_items: transaction.split_items?.map((item) => ({
         ...item,
         category_id:
           transaction.hidden_mode === 'TRANSACTION' ? null : item.category_id,
+        expense_frequency:
+          transaction.hidden_mode === 'TRANSACTION'
+            ? null
+            : item.expense_frequency,
         description: null,
         note: null,
       })),

@@ -121,6 +121,13 @@ describe('Firestore rules: budget access', () => {
         account_id: 'acc-a-1',
         balance_amount: '10.00',
       });
+      await setDoc(doc(db, 'spending_limits/limit-a-1'), {
+        budget_id: 'budget-a',
+        limit_scope: 'ALL_EXPENSES',
+        period: 'MONTH',
+        limit_amount: '100.00',
+        currency: 'CHF',
+      });
       await setDoc(doc(db, 'transfer_groups/transfer-a-1'), {
         budget_id: 'budget-a',
         status: 'CONFIRMED',
@@ -208,6 +215,7 @@ describe('Firestore rules: budget access', () => {
         'split_items/split-a-1',
         'account_balance_snapshots/snapshot-a-1',
         'transfer_groups/transfer-a-1',
+        'spending_limits/limit-a-1',
       ]) {
         await assertSucceeds(getDoc(doc(asUser('member-1'), path)));
         await assertFails(getDoc(doc(asUser('other-owner'), path)));
@@ -224,6 +232,7 @@ describe('Firestore rules: budget access', () => {
         'tags/tag-a-1',
         'transaction_tags/link-a-1',
         'split_items/split-a-1',
+        'spending_limits/limit-a-1',
       ];
       for (const path of paths) {
         await assertSucceeds(getDoc(doc(memberDb, path)));

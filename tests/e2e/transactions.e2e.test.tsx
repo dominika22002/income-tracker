@@ -87,6 +87,18 @@ describe('transaction, category and search UI (E-FR-25…28, E-FR-35…36)', () 
     });
     fireEvent.click(ui.getByRole('button', { name: 'Dodaj kategorię' }));
     await ui.findByText('Kategoria została dodana.');
+    const categorySnapshot = await getDocs(
+      query(
+        collection(
+          env.authenticatedContext(USER.uid).firestore(),
+          'categories',
+        ),
+        where('budget_id', '==', budget.budget_id),
+      ),
+    );
+    expect(
+      categorySnapshot.docs.map((category) => category.get('name')),
+    ).toContain('Synthetic food');
     await ui.findByText(/Synthetic food/);
     fireEvent.change(ui.getByLabelText('Nazwa nowej kategorii'), {
       target: { value: 'Synthetic home' },

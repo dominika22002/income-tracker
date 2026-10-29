@@ -294,6 +294,10 @@ export async function saveTransaction(
       amount: request.amount,
       currency: request.currency,
       type: request.type,
+      expense_frequency:
+        request.expense_frequency === undefined
+          ? (existing.get('expense_frequency') ?? null)
+          : request.expense_frequency,
       category_id: categoryId,
       created_by_membership_id:
         existing.get('created_by_membership_id') ?? actor.membership_id,

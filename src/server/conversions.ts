@@ -46,6 +46,7 @@ export async function getTransactionConversions(
     const targets = [
       preferences.get('primary_currency') as string,
       ...(preferences.get('secondary_currencies') as string[]),
+      ...(request.target_currency ? [request.target_currency] : []),
     ];
     return {
       actorMembershipId: actor.membership_id,

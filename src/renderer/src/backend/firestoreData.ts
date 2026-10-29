@@ -17,6 +17,7 @@ import type {
   InvitationView,
   MemberView,
   MyBudgetView,
+  SpendingLimitView,
   TransactionView,
   TransferGroupView,
   UserPreferencesRecord,
@@ -451,6 +452,31 @@ export function createFirestoreDataSource(db: Firestore): BudgetDataSource {
       return () => unsubs.forEach((unsubscribe) => unsubscribe());
     },
 
+    subscribeSpendingLimits(budgetId, onData, onError) {
+      return onSnapshot(
+        query(
+          collection(db, 'spending_limits'),
+          where('budget_id', '==', budgetId),
+        ),
+        (snapshot) => {
+          onData(
+            snapshot.docs.map((limit) => ({
+              spending_limit_id: limit.id,
+              budget_id: budgetId,
+              limit_scope: limit.get(
+                'limit_scope',
+              ) as SpendingLimitView['limit_scope'],
+              category_id: (limit.get('category_id') as string | null) ?? null,
+              period: limit.get('period') as SpendingLimitView['period'],
+              limit_amount: limit.get('limit_amount') as string,
+              currency: limit.get('currency') as string,
+            })),
+          );
+        },
+        onError,
+      );
+    },
+
     subscribeTransferGroups(budgetId, onData, onError) {
       return onSnapshot(
         query(
@@ -488,6 +514,9 @@ export function createFirestoreDataSource(db: Firestore): BudgetDataSource {
                 (category.get('parent_category_id') as string | null) ?? null,
               name: category.get('name') as string,
               kind: category.get('kind') as CategoryView['kind'],
+              expense_nature:
+                (category.get('expense_nature') as
+                  CategoryView['expense_nature'] | undefined) ?? null,
               sort_order:
                 (category.get('sort_order') as number | undefined) ?? 0,
               archived_at:

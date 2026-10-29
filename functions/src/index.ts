@@ -39,6 +39,7 @@ export const updatePreferences = callable('updatePreferences');
 export const createBudget = callable('createBudget');
 export const createAccount = callable('createAccount');
 export const saveAccountBalance = callable('saveAccountBalance');
+export const saveSpendingLimit = callable('saveSpendingLimit');
 export const getTransactionConversions = callable('getTransactionConversions');
 export const reviewTransfer = callable('reviewTransfer');
 export const saveTransaction = callable('saveTransaction');

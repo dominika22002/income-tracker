@@ -14,9 +14,10 @@ import { StatementCsvPreview } from '../imports/StatementCsvPreview';
 import { TransactionsWorkspace } from './TransactionsWorkspace';
 import { HiddenTransactionsNotice } from './HiddenTransactionsNotice';
 import { transactionsVisibleToMember } from '../../../../shared/domain/transactionFeatures';
+import { ReportsWorkspace } from './ReportsWorkspace';
 
 export type AppView =
-  'overview' | 'transactions' | 'budgets' | 'imports' | 'settings';
+  'overview' | 'transactions' | 'reports' | 'budgets' | 'imports' | 'settings';
 
 export function BudgetApp({
   services,
@@ -413,6 +414,7 @@ function RoutedBudgetView({
   const description = {
     overview: 'Najważniejsze informacje o Twoich budżetach i danych.',
     transactions: 'Sprawdź transakcje zapisane w wybranym budżecie.',
+    reports: 'Podsumowania, limity i oszczędności w wybranym budżecie.',
     budgets: 'Zarządzaj budżetami, członkostwem i zaproszeniami.',
     imports: 'Wczytaj wyciąg lokalnie i sprawdź dane przed zatwierdzeniem.',
     settings: 'Dostosuj preferencje konta i waluty.',
@@ -564,6 +566,16 @@ function RoutedBudgetView({
           budgets={budgets}
           selectedBudgetId={selected?.budget_id}
           onSelectBudget={onSelectBudget}
+        />
+      )}
+
+      {ready && view === 'reports' && (
+        <ReportsWorkspace
+          services={services}
+          budgets={budgets}
+          selectedBudgetId={selected?.budget_id}
+          onSelectBudget={onSelectBudget}
+          preferences={preferences}
         />
       )}
 
@@ -1016,6 +1028,8 @@ function viewTitle(view: AppView): string {
       return 'Przegląd';
     case 'transactions':
       return 'Transakcje';
+    case 'reports':
+      return 'Raporty';
     case 'budgets':
       return 'Budżety';
     case 'imports':

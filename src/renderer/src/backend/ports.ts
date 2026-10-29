@@ -7,6 +7,7 @@ import type {
   InvitationView,
   MemberView,
   MyBudgetView,
+  SpendingLimitView,
   TransactionView,
   TransferGroupView,
   UserPreferencesRecord,
@@ -73,6 +74,11 @@ export interface BudgetDataSource {
   subscribeAccountBalances(
     accountIds: readonly string[],
     onData: (balances: AccountBalanceView[]) => void,
+    onError: ErrorListener,
+  ): Unsubscribe;
+  subscribeSpendingLimits(
+    budgetId: string,
+    onData: (limits: SpendingLimitView[]) => void,
     onError: ErrorListener,
   ): Unsubscribe;
   subscribeTransferGroups(

@@ -12,6 +12,7 @@ export const COLLECTIONS = {
   transactions: 'transactions',
   splitItems: 'split_items',
   transferGroups: 'transfer_groups',
+  spendingLimits: 'spending_limits',
   accountBalanceSnapshots: 'account_balance_snapshots',
   exchangeRates: 'exchange_rates',
   exchangeRateLookups: 'exchange_rate_lookups',

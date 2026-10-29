@@ -15,6 +15,7 @@ import type {
   ReadLocalStatementRequest,
   ReviewTransferRequest,
   SaveAccountBalanceRequest,
+  SaveSpendingLimitRequest,
   SaveCategorizationRuleRequest,
   SaveCategoryRequest,
   SaveTransactionSplitRequest,
@@ -119,6 +120,12 @@ const CATEGORY_KINDS = new Set(['EXPENSE', 'INCOME', 'TRANSFER']);
 const CATEGORIZATION_FIELDS = new Set(['DESCRIPTION', 'ACCOUNT', 'AMOUNT']);
 const CATEGORIZATION_OPERATORS = new Set(['CONTAINS', 'EQUALS', 'STARTS_WITH']);
 const EXPENSE_FREQUENCIES = new Set(['RECURRING', 'IRREGULAR', 'ONE_TIME']);
+const EXPENSE_NATURES = new Set(['FIXED', 'VARIABLE', 'DISCRETIONARY']);
+const SPENDING_LIMIT_SCOPES = new Set([
+  'CATEGORY',
+  'ALL_EXPENSES',
+  'ONE_TIME_EXPENSES',
+]);
 const HIDDEN_MODES = new Set(['DESCRIPTION', 'TRANSACTION']);
 const STATEMENT_PARSER_IDS = new Set(['history-v1', 'savings-v1']);
 const DECIMAL_AMOUNT_PATTERN = /^[+-]?\d{1,15}(?:\.\d{1,4})?$/;
@@ -288,6 +295,16 @@ export function validateSaveTransactionRequest(
     if (!isTransactionId(record.transaction_id)) return null;
     request.transaction_id = record.transaction_id;
   }
+  if (record.expense_frequency !== undefined) {
+    if (
+      record.expense_frequency !== null &&
+      !EXPENSE_FREQUENCIES.has(String(record.expense_frequency))
+    ) {
+      return null;
+    }
+    request.expense_frequency =
+      record.expense_frequency as SaveTransactionRequest['expense_frequency'];
+  }
   if (record.category_id !== undefined) {
     if (record.category_id !== null && !isUuid(record.category_id)) return null;
     request.category_id = record.category_id as string | null;
@@ -447,6 +464,9 @@ export function validateSaveCategoryRequest(
     !record.name.trim() ||
     record.name.trim().length > MAX_CATEGORY_NAME_LENGTH ||
     !CATEGORY_KINDS.has(String(record.kind)) ||
+    (record.expense_nature != null &&
+      !EXPENSE_NATURES.has(String(record.expense_nature))) ||
+    (record.kind !== 'EXPENSE' && record.expense_nature != null) ||
     !Number.isInteger(record.sort_order) ||
     (record.sort_order as number) < 0 ||
     (record.sort_order as number) > 10_000
@@ -472,7 +492,47 @@ export function validateSaveCategoryRequest(
     }
     request.parent_category_id = record.parent_category_id as string | null;
   }
+  if (record.expense_nature !== undefined) {
+    request.expense_nature =
+      (record.expense_nature as SaveCategoryRequest['expense_nature']) ?? null;
+  }
   return request;
+}
+
+export function validateSaveSpendingLimitRequest(
+  input: unknown,
+): SaveSpendingLimitRequest | null {
+  const record = asRecord(input);
+  if (
+    !record ||
+    !isUuid(record.budget_id) ||
+    !SPENDING_LIMIT_SCOPES.has(String(record.limit_scope)) ||
+    record.period !== 'MONTH' ||
+    !isAmount(record.limit_amount) ||
+    record.limit_amount.startsWith('-') ||
+    !isIsoCurrencyCode(record.currency)
+  ) {
+    return null;
+  }
+  const limitScope =
+    record.limit_scope as SaveSpendingLimitRequest['limit_scope'];
+  if (
+    (limitScope === 'CATEGORY' && !isUuid(record.category_id)) ||
+    (limitScope !== 'CATEGORY' &&
+      record.category_id !== undefined &&
+      record.category_id !== null)
+  ) {
+    return null;
+  }
+  return {
+    budget_id: record.budget_id,
+    limit_scope: limitScope,
+    category_id:
+      limitScope === 'CATEGORY' ? (record.category_id as string) : null,
+    period: 'MONTH',
+    limit_amount: record.limit_amount,
+    currency: record.currency,
+  };
 }
 
 export function validateArchiveCategoryRequest(
@@ -755,12 +815,21 @@ export function validateGetTransactionConversionsRequest(
   input: unknown,
 ): GetTransactionConversionsRequest | null {
   const record = asRecord(input);
-  if (!record || !isUuid(record.budget_id) || !isUuid(record.transaction_id)) {
+  if (
+    !record ||
+    !isUuid(record.budget_id) ||
+    !isUuid(record.transaction_id) ||
+    (record.target_currency !== undefined &&
+      !isIsoCurrencyCode(record.target_currency))
+  ) {
     return null;
   }
   return {
     budget_id: record.budget_id,
     transaction_id: record.transaction_id,
+    ...(record.target_currency === undefined
+      ? {}
+      : { target_currency: record.target_currency }),
   };
 }
 

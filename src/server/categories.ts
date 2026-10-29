@@ -103,6 +103,9 @@ export async function saveCategory(
       tx.update(categoryRef, {
         name: request.name,
         sort_order: request.sort_order,
+        ...(request.expense_nature === undefined
+          ? {}
+          : { expense_nature: request.expense_nature }),
       });
     } else {
       tx.create(categoryRef, {
@@ -110,6 +113,7 @@ export async function saveCategory(
         parent_category_id: effectiveParentId,
         name: request.name,
         kind: request.kind,
+        expense_nature: request.expense_nature ?? null,
         sort_order: request.sort_order,
         created_by_membership_id: actor.membership_id,
         archived_at: null,

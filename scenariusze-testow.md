@@ -245,7 +245,7 @@ This table describes coverage, not execution status. Suggestions are device-loca
 | E-FR-30–E-FR-34          | `tests/e2e/transactions.e2e.test.tsx` (split editor and source currency)                                                          | `npm run test:e2e`   |
 | E-FR-50–E-FR-54          | `tests/e2e/transactions.e2e.test.tsx` (author visibility, hidden row/search and expiry notice for another member)                 | `npm run test:e2e`   |
 
-This mapping describes coverage, not execution status. Export projection tests cover the shared row data used by a future file exporter; the current application has no file-export feature or report aggregation screen to exercise end-to-end.
+This mapping describes coverage, not execution status. Export projection tests cover the shared row data used by a future file exporter; Stage 6 report aggregation coverage is listed below.
 
 ## Stage 5 implementation mapping (currencies, transfers and balances)
 
@@ -260,3 +260,13 @@ This mapping describes coverage, not execution status. Export projection tests c
 | E-FR-39–E-FR-40, E-FR-48 | `tests/e2e/stage5.e2e.test.tsx` (correct, reject and confirm transfer flows, explicit unilateral warning and manual balance save)                                                                                                                                        | `npm run test:e2e`                        |
 
 TR-20/TR-21 production cost measurement and alerting are not represented as implemented: the app can only report its own reliable usage events and produce a projection if adequate history exists, while actual provider costs and billing-alert configuration require an identified production billing project and authorized billing metrics. Neither is configured in this repository. TR-22 and FR-55–FR-63 remain mapped to Stage 7; no export endpoint or file writer was added in Stage 5.
+
+## Stage 6 implementation mapping (reports, limits and savings)
+
+| Scenario IDs    | Implemented test file(s)                                                                                                                                                        | Command              |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- |
+| U-FR-43–U-FR-49 | `tests/unit/reporting.test.ts` (inclusive periods, empty periods, categories, per-transaction FX, splits, masked hidden transactions, transfers, limits, estimate and balances) | `npm run test:unit`  |
+| I-FR-43–I-FR-49 | `tests/integration/stage6.test.ts`, `tests/rules/firestore.rules.test.ts` (saved classifications, limits and requested report-currency conversions; member-only reads)          | `npm run test:rules` |
+| E-FR-43–E-FR-49 | `tests/e2e/stage6.e2e.test.tsx` (chosen date range, hidden expenses, confirmed transfers, limit usage and estimated versus saved savings balances)                              | `npm run test:e2e`   |
+
+`src/shared/domain/reporting.ts` is the shared source for report totals, category comparisons, monthly limit usage, historical estimates and savings-account snapshots. Hidden amounts remain in aggregate totals while access-controlled details are masked before the shared calculations.

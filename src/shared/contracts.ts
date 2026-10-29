@@ -183,7 +183,30 @@ export interface TransactionConversionView {
 }
 
 export type ExpenseFrequency = 'RECURRING' | 'IRREGULAR' | 'ONE_TIME';
+export type ExpenseNature = 'FIXED' | 'VARIABLE' | 'DISCRETIONARY';
 export type HiddenMode = 'DESCRIPTION' | 'TRANSACTION';
+export type SpendingLimitScope =
+  'CATEGORY' | 'ALL_EXPENSES' | 'ONE_TIME_EXPENSES';
+export type SpendingLimitPeriod = 'MONTH';
+
+export interface SpendingLimitView {
+  spending_limit_id: string;
+  budget_id: string;
+  limit_scope: SpendingLimitScope;
+  category_id: string | null;
+  period: SpendingLimitPeriod;
+  limit_amount: string;
+  currency: string;
+}
+
+export interface SaveSpendingLimitRequest {
+  budget_id: string;
+  limit_scope: SpendingLimitScope;
+  category_id?: string | null;
+  period: SpendingLimitPeriod;
+  limit_amount: string;
+  currency: string;
+}
 
 export interface SplitItemInput {
   amount: string;
@@ -211,6 +234,7 @@ export interface CategoryView {
   parent_category_id: string | null;
   name: string;
   kind: CategoryKind;
+  expense_nature: ExpenseNature | null;
   sort_order: number;
   archived_at: string | null;
 }
@@ -317,6 +341,7 @@ export interface SaveAccountBalanceResult {
 export interface GetTransactionConversionsRequest {
   budget_id: string;
   transaction_id: string;
+  target_currency?: string;
 }
 
 export interface GetTransactionConversionsResult {
@@ -345,6 +370,7 @@ export interface SaveTransactionRequest {
   amount: string;
   currency: string;
   type: StatementTransactionType;
+  expense_frequency?: ExpenseFrequency | null;
   category_id?: string | null;
   note?: string | null;
   tags?: string[];
@@ -385,6 +411,7 @@ export interface SaveCategoryRequest {
   parent_category_id?: string | null;
   name: string;
   kind: CategoryKind;
+  expense_nature?: ExpenseNature | null;
   sort_order: number;
 }
 
@@ -470,6 +497,7 @@ export interface BudgetBackend {
   saveAccountBalance(
     request: SaveAccountBalanceRequest,
   ): Promise<SaveAccountBalanceResult>;
+  saveSpendingLimit(request: SaveSpendingLimitRequest): Promise<void>;
   getTransactionConversions(
     request: GetTransactionConversionsRequest,
   ): Promise<GetTransactionConversionsResult>;

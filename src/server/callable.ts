@@ -10,6 +10,7 @@ import {
 import { createBudget } from './budgets';
 import { createAccount } from './accounts';
 import { saveAccountBalance } from './balances';
+import { saveSpendingLimit } from './spendingLimits';
 import { archiveCategory, saveCategory } from './categories';
 import { saveCategorizationRule } from './categorization';
 import { commitCsvImport } from './imports';
@@ -50,6 +51,7 @@ export const CALLABLE_NAMES = [
   'createBudget',
   'createAccount',
   'saveAccountBalance',
+  'saveSpendingLimit',
   'getTransactionConversions',
   'reviewTransfer',
   'saveTransaction',
@@ -95,6 +97,9 @@ export function createHandlers(
       createAccount(deps, callerFromAuth(auth), data),
     saveAccountBalance: (auth, data) =>
       saveAccountBalance(deps, callerFromAuth(auth), data),
+    saveSpendingLimit: async (auth, data) => {
+      await saveSpendingLimit(deps, callerFromAuth(auth), data);
+    },
     getTransactionConversions: (auth, data) =>
       getTransactionConversions(deps, callerFromAuth(auth), data),
     reviewTransfer: (auth, data) =>
@@ -200,6 +205,7 @@ export function createLocalBackend(
     createBudget: (request) => call('createBudget', request),
     createAccount: (request) => call('createAccount', request),
     saveAccountBalance: (request) => call('saveAccountBalance', request),
+    saveSpendingLimit: (request) => call('saveSpendingLimit', request),
     getTransactionConversions: (request) =>
       call('getTransactionConversions', request),
     reviewTransfer: (request) => call('reviewTransfer', request),
