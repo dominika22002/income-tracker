@@ -5,22 +5,26 @@ import { createCallableBackend } from './backend/callableBackend';
 import { createFirebaseAuthGateway } from './backend/firebaseAuth';
 import { createFirestoreDataSource } from './backend/firestoreData';
 import type { AppServices } from './backend/ports';
-import { auth, db, functions } from './firebase/config';
+import { auth, db, functions, requireAuth } from './firebase/config';
 import './styles.css';
 
 const services: AppServices = {
-  auth: createFirebaseAuthGateway(auth, async () => {
-    const result = await window.electronApi.startGoogleOAuth();
-    if (!result.launched) {
-      throw new Error(result.error ?? 'Could not open the system browser.');
-    }
-  }),
+  auth: createFirebaseAuthGateway(
+    auth,
+    async () => {
+      const result = await window.electronApi.startGoogleOAuth();
+      if (!result.launched) {
+        throw new Error(result.error ?? 'Could not open the system browser.');
+      }
+    },
+    requireAuth,
+  ),
   backend: createCallableBackend(functions),
   data: createFirestoreDataSource(db),
 };
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
-    <App services={services} />
+    <App services={services} requireAuth={requireAuth} />
   </React.StrictMode>,
 );

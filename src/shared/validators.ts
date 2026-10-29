@@ -1,12 +1,19 @@
 import type {
   AccountType,
+  ArchiveCategoryRequest,
   CommitCsvImportRequest,
+  CategoryKind,
+  CategorizationMatchField,
+  CategorizationMatchOperator,
   CreateAccountRequest,
   CreateBudgetRequest,
   CreateInvitationRequest,
   OAuthCallbackPayload,
   RemoveMemberRequest,
   ReadLocalStatementRequest,
+  SaveCategorizationRuleRequest,
+  SaveCategoryRequest,
+  SaveTransactionRequest,
   StatementImportRowRequest,
   UpdatePreferencesRequest,
   WriteTestFileRequest,
@@ -89,6 +96,11 @@ const MAX_BUDGET_NAME_LENGTH = 100;
 const MAX_EMAIL_LENGTH = 254;
 const MAX_ACCOUNT_LABEL_LENGTH = 100;
 const MAX_ACCOUNT_INSTITUTION_LENGTH = 120;
+const MAX_TRANSACTION_DESCRIPTION_LENGTH = 1_000;
+const MAX_TRANSACTION_NOTE_LENGTH = 4_000;
+const MAX_CATEGORY_NAME_LENGTH = 80;
+const MAX_TAG_NAME_LENGTH = 40;
+const MAX_TRANSACTION_TAGS = 20;
 export const MAX_CSV_IMPORT_ROWS = 150;
 const ACCOUNT_TYPES: ReadonlySet<AccountType> = new Set([
   'CHECKING',
@@ -97,6 +109,9 @@ const ACCOUNT_TYPES: ReadonlySet<AccountType> = new Set([
   'OTHER',
 ]);
 const TRANSACTION_TYPES = new Set(['EXPENSE', 'INCOME', 'TRANSFER']);
+const CATEGORY_KINDS = new Set(['EXPENSE', 'INCOME', 'TRANSFER']);
+const CATEGORIZATION_FIELDS = new Set(['DESCRIPTION', 'ACCOUNT', 'AMOUNT']);
+const CATEGORIZATION_OPERATORS = new Set(['CONTAINS', 'EQUALS', 'STARTS_WITH']);
 const STATEMENT_PARSER_IDS = new Set(['history-v1', 'savings-v1']);
 const DECIMAL_AMOUNT_PATTERN = /^[+-]?\d{1,15}(?:\.\d{1,4})?$/;
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
@@ -105,6 +120,12 @@ export const INVITATION_LINK_PREFIX = 'income-tracker://invite?token=';
 
 export function isUuid(value: unknown): value is string {
   return typeof value === 'string' && UUID_PATTERN.test(value);
+}
+
+function isTransactionId(value: unknown): value is string {
+  return (
+    isUuid(value) || (typeof value === 'string' && /^[a-f0-9]{64}$/.test(value))
+  );
 }
 
 export function validateBudgetName(input: unknown): string | null {
@@ -187,7 +208,11 @@ export function validateCreateAccountRequest(
   if (!record || !isUuid(record.budget_id)) return null;
 
   const label = validateAccountLabel(record.label);
-  if (!label || !isIsoCurrencyCode(record.currency) || !isAccountType(record.account_type)) {
+  if (
+    !label ||
+    !isIsoCurrencyCode(record.currency) ||
+    !isAccountType(record.account_type)
+  ) {
     return null;
   }
 
@@ -209,6 +234,195 @@ export function validateCreateAccountRequest(
   if (record.account_id !== undefined) {
     if (!isUuid(record.account_id)) return null;
     request.account_id = record.account_id;
+  }
+  return request;
+}
+
+function validateOptionalText(
+  value: unknown,
+  maxLength: number,
+): string | null | undefined {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  if (typeof value !== 'string' || value.length > maxLength) return undefined;
+  return value.trim() || null;
+}
+
+export function validateSaveTransactionRequest(
+  input: unknown,
+): SaveTransactionRequest | null {
+  const record = asRecord(input);
+  if (
+    !record ||
+    !isUuid(record.budget_id) ||
+    !isUuid(record.account_id) ||
+    typeof record.operation_date !== 'string' ||
+    !isValidCalendarDate(record.operation_date) ||
+    typeof record.description !== 'string' ||
+    record.description.trim().length === 0 ||
+    record.description.trim().length > MAX_TRANSACTION_DESCRIPTION_LENGTH ||
+    !isAmount(record.amount) ||
+    !isIsoCurrencyCode(record.currency) ||
+    !TRANSACTION_TYPES.has(String(record.type))
+  ) {
+    return null;
+  }
+  const request: SaveTransactionRequest = {
+    budget_id: record.budget_id,
+    account_id: record.account_id,
+    operation_date: record.operation_date,
+    description: record.description.trim(),
+    amount: record.amount,
+    currency: record.currency,
+    type: record.type as SaveTransactionRequest['type'],
+  };
+  if (record.transaction_id !== undefined) {
+    if (!isTransactionId(record.transaction_id)) return null;
+    request.transaction_id = record.transaction_id;
+  }
+  if (record.category_id !== undefined) {
+    if (record.category_id !== null && !isUuid(record.category_id)) return null;
+    request.category_id = record.category_id as string | null;
+  }
+  const note = validateOptionalText(record.note, MAX_TRANSACTION_NOTE_LENGTH);
+  if (note === undefined && record.note !== undefined) return null;
+  if (note !== undefined) request.note = note;
+  if (record.tags !== undefined) {
+    if (
+      !Array.isArray(record.tags) ||
+      record.tags.length > MAX_TRANSACTION_TAGS ||
+      record.tags.some(
+        (tag) =>
+          typeof tag !== 'string' ||
+          tag.trim().length === 0 ||
+          tag.trim().length > MAX_TAG_NAME_LENGTH,
+      )
+    ) {
+      return null;
+    }
+    request.tags = [
+      ...new Map(
+        record.tags.map((tag: string) => [
+          tag.trim().toLocaleLowerCase(),
+          tag.trim(),
+        ]),
+      ).values(),
+    ];
+  }
+  if (record.create_rule !== undefined) {
+    const ruleRecord = asRecord(record.create_rule);
+    if (!ruleRecord) return null;
+    const rule = validateSaveCategorizationRuleRequest({
+      budget_id: record.budget_id,
+      category_id: request.category_id,
+      ...ruleRecord,
+    });
+    if (!rule || rule.match_field !== 'DESCRIPTION' || !rule.category_id) {
+      return null;
+    }
+    request.create_rule = {
+      match_field: rule.match_field,
+      operator: rule.operator,
+      match_value: rule.match_value,
+      priority: rule.priority,
+    };
+  }
+  return request;
+}
+
+export function validateSaveCategoryRequest(
+  input: unknown,
+): SaveCategoryRequest | null {
+  const record = asRecord(input);
+  if (
+    !record ||
+    !isUuid(record.budget_id) ||
+    typeof record.name !== 'string' ||
+    !record.name.trim() ||
+    record.name.trim().length > MAX_CATEGORY_NAME_LENGTH ||
+    !CATEGORY_KINDS.has(String(record.kind)) ||
+    !Number.isInteger(record.sort_order) ||
+    (record.sort_order as number) < 0 ||
+    (record.sort_order as number) > 10_000
+  ) {
+    return null;
+  }
+  const request: SaveCategoryRequest = {
+    budget_id: record.budget_id,
+    name: record.name.trim(),
+    kind: record.kind as CategoryKind,
+    sort_order: record.sort_order as number,
+  };
+  if (record.category_id !== undefined) {
+    if (!isUuid(record.category_id)) return null;
+    request.category_id = record.category_id;
+  }
+  if (record.parent_category_id !== undefined) {
+    if (
+      record.parent_category_id !== null &&
+      !isUuid(record.parent_category_id)
+    ) {
+      return null;
+    }
+    request.parent_category_id = record.parent_category_id as string | null;
+  }
+  return request;
+}
+
+export function validateArchiveCategoryRequest(
+  input: unknown,
+): ArchiveCategoryRequest | null {
+  const record = asRecord(input);
+  if (!record || !isUuid(record.budget_id) || !isUuid(record.category_id)) {
+    return null;
+  }
+  return { budget_id: record.budget_id, category_id: record.category_id };
+}
+
+export function validateSaveCategorizationRuleRequest(
+  input: unknown,
+): SaveCategorizationRuleRequest | null {
+  const record = asRecord(input);
+  if (
+    !record ||
+    !isUuid(record.budget_id) ||
+    !isUuid(record.category_id) ||
+    !CATEGORIZATION_FIELDS.has(String(record.match_field)) ||
+    !CATEGORIZATION_OPERATORS.has(String(record.operator)) ||
+    typeof record.match_value !== 'string' ||
+    !record.match_value.trim() ||
+    record.match_value.trim().length > 200 ||
+    !Number.isInteger(record.priority) ||
+    (record.priority as number) < 0 ||
+    (record.priority as number) > 10_000 ||
+    (record.enabled !== undefined && typeof record.enabled !== 'boolean')
+  ) {
+    return null;
+  }
+  const matchField = record.match_field as CategorizationMatchField;
+  const operator = record.operator as CategorizationMatchOperator;
+  if (
+    ((matchField === 'ACCOUNT' || matchField === 'AMOUNT') &&
+      operator !== 'EQUALS') ||
+    (matchField === 'ACCOUNT' && !isUuid(record.match_value)) ||
+    (matchField === 'AMOUNT' && !isAmount(record.match_value))
+  ) {
+    return null;
+  }
+  const request: SaveCategorizationRuleRequest = {
+    budget_id: record.budget_id,
+    category_id: record.category_id,
+    match_field: matchField,
+    operator,
+    match_value: record.match_value.trim(),
+    priority: record.priority as number,
+    ...(record.enabled === undefined
+      ? {}
+      : { enabled: record.enabled as boolean }),
+  };
+  if (record.rule_id !== undefined) {
+    if (!isUuid(record.rule_id)) return null;
+    request.rule_id = record.rule_id;
   }
   return request;
 }

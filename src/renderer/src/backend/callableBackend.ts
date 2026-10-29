@@ -49,6 +49,11 @@ export function createCallableBackend(functions: Functions): BudgetBackend {
     updatePreferences: (request) => call('updatePreferences', request),
     createBudget: (request) => call('createBudget', request),
     createAccount: (request) => call('createAccount', request),
+    saveTransaction: (request) => call('saveTransaction', request),
+    saveCategory: (request) => call('saveCategory', request),
+    archiveCategory: (request) => call('archiveCategory', request),
+    saveCategorizationRule: (request) =>
+      call('saveCategorizationRule', request),
     commitCsvImport: (request) => call('commitCsvImport', request),
     createInvitation: (request) => call('createInvitation', request),
     previewInvitation: (token) => call('previewInvitation', { token }),

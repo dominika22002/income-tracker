@@ -10,6 +10,7 @@
   "license": "MIT",
   "scripts": {
     "dev": "electron-vite dev",
+    "emulators:dev": "npm run build:functions && firebase emulators:start --project demo-income-tracker --only auth,firestore,functions --import=.firebase-data --export-on-exit",
     "build": "npm run typecheck && electron-vite build && electron-builder",
     "build:mac": "npm run typecheck && electron-vite build && electron-builder --mac",
     "build:win": "npm run typecheck && electron-vite build && electron-builder --win",

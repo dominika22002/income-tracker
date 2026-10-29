@@ -76,6 +76,28 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    match /categories/{categoryId} {
+      allow read: if isActiveMember(resource.data.budget_id);
+      allow write: if false;
+    }
+
+    match /categorization_rules/{ruleId} {
+      allow read: if isActiveMember(resource.data.budget_id);
+      allow write: if false;
+    }
+
+    match /tags/{tagId} {
+      allow read: if isActiveMember(resource.data.budget_id);
+      allow write: if false;
+    }
+
+    match /transaction_tags/{transactionTagId} {
+      allow read: if signedIn()
+        && exists(/databases/$(database)/documents/transactions/$(resource.data.transaction_id))
+        && isActiveMember(get(/databases/$(database)/documents/transactions/$(resource.data.transaction_id)).data.budget_id);
+      allow write: if false;
+    }
+
     match /account_balance_snapshots/{snapshotId} {
       allow read: if signedIn()
         && exists(/databases/$(database)/documents/accounts/$(resource.data.account_id))

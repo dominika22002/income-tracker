@@ -1,15 +1,16 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { createAccount } from '../../src/server/accounts';
+import { saveCategory } from '../../src/server/categories';
+import { saveCategorizationRule } from '../../src/server/categorization';
 import { createBudget } from '../../src/server/budgets';
 import { commitCsvImport } from '../../src/server/imports';
-import { acceptInvitation, createInvitation } from '../../src/server/invitations';
-import type { StatementImportRowRequest } from '../../src/shared/contracts';
+import { saveTransaction } from '../../src/server/transactions';
 import {
-  adminDb,
-  clearFirestore,
-  countDocs,
-  testDeps,
-} from './helpers';
+  acceptInvitation,
+  createInvitation,
+} from '../../src/server/invitations';
+import type { StatementImportRowRequest } from '../../src/shared/contracts';
+import { adminDb, clearFirestore, countDocs, testDeps } from './helpers';
 
 const alice = {
   uid: 'alice',
@@ -65,7 +66,9 @@ describe('CSV import commit (I-FR-11, I-FR-14, I-FR-29, I-TR-12)', () => {
 
   async function ownedAccount() {
     const deps = testDeps();
-    const budget = await createBudget(deps, alice, { name: 'Synthetic budget' });
+    const budget = await createBudget(deps, alice, {
+      name: 'Synthetic budget',
+    });
     const account = await createAccount(deps, alice, {
       budget_id: budget.budget_id,
       label: 'Synthetic checking',
@@ -138,9 +141,62 @@ describe('CSV import commit (I-FR-11, I-FR-14, I-FR-29, I-TR-12)', () => {
     });
   });
 
+  it('preserves imported source links when a transaction is edited', async () => {
+    const { deps, budget, account } = await ownedAccount();
+    const result = await commitCsvImport(
+      deps,
+      alice,
+      request(budget.budget_id, account.account_id, 'c'.repeat(64), [
+        {
+          row_number: 2,
+          decision: 'include',
+          operation_date: '2026-03-04',
+          description: 'Synthetic imported purchase',
+          amount: '12.3400',
+          currency: 'CHF',
+          transaction_type: 'EXPENSE',
+          bank_transaction_id: 'synthetic-bank-transaction',
+        },
+      ]),
+    );
+    const db = adminDb();
+    const imported = await db
+      .collection('transactions')
+      .where('import_batch_id', '==', result.import_batch_id)
+      .get();
+    const transactionId = imported.docs[0].id;
+
+    await saveTransaction(deps, alice, {
+      transaction_id: transactionId,
+      budget_id: budget.budget_id,
+      account_id: account.account_id,
+      operation_date: '2026-03-05',
+      description: 'Synthetic imported purchase corrected',
+      amount: '15.0000',
+      currency: 'CHF',
+      type: 'EXPENSE',
+    });
+
+    expect(
+      (await db.doc(`transactions/${transactionId}`).get()).data(),
+    ).toMatchObject({
+      budget_id: budget.budget_id,
+      account_id: account.account_id,
+      import_batch_id: result.import_batch_id,
+      imported_by_membership_id: budget.membership_id,
+      bank_transaction_id: 'synthetic-bank-transaction',
+      amount: '15.0000',
+      currency: 'CHF',
+    });
+  });
+
   it('is idempotent for the same account and file hash', async () => {
     const { deps, budget, account } = await ownedAccount();
-    const payload = request(budget.budget_id, account.account_id, 'b'.repeat(64));
+    const payload = request(
+      budget.budget_id,
+      account.account_id,
+      'b'.repeat(64),
+    );
     const first = await commitCsvImport(deps, alice, payload);
     const retry = await commitCsvImport(deps, alice, payload);
 
@@ -148,6 +204,63 @@ describe('CSV import commit (I-FR-11, I-FR-14, I-FR-29, I-TR-12)', () => {
     expect(await countDocs(adminDb(), 'import_batches')).toBe(1);
     expect(await countDocs(adminDb(), 'transactions')).toBe(2);
     expect(await countDocs(adminDb(), 'import_periods')).toBe(2);
+  });
+
+  it('applies only an enabled user rule to newly imported transactions', async () => {
+    const { deps, budget, account } = await ownedAccount();
+    const category = await saveCategory(deps, alice, {
+      budget_id: budget.budget_id,
+      name: 'Synthetic imported category',
+      kind: 'EXPENSE',
+      sort_order: 0,
+    });
+    await saveCategorizationRule(deps, alice, {
+      budget_id: budget.budget_id,
+      category_id: category.category_id,
+      match_field: 'DESCRIPTION',
+      operator: 'CONTAINS',
+      match_value: 'synthetic scheduled',
+      priority: 2,
+      enabled: false,
+    });
+    const activeRuleCategory = await saveCategory(deps, alice, {
+      budget_id: budget.budget_id,
+      name: 'Synthetic active rule category',
+      kind: 'EXPENSE',
+      sort_order: 1,
+    });
+    const activeRule = await saveCategorizationRule(deps, alice, {
+      budget_id: budget.budget_id,
+      category_id: activeRuleCategory.category_id,
+      match_field: 'DESCRIPTION',
+      operator: 'CONTAINS',
+      match_value: 'synthetic scheduled',
+      priority: 1,
+    });
+    const result = await commitCsvImport(
+      deps,
+      alice,
+      request(budget.budget_id, account.account_id, 'a'.repeat(64), [
+        {
+          row_number: 2,
+          decision: 'include',
+          operation_date: '2026-03-02',
+          description: 'Synthetic scheduled item',
+          amount: '3.50',
+          currency: 'CHF',
+          transaction_type: 'EXPENSE',
+        },
+      ]),
+    );
+    const imported = await adminDb()
+      .collection('transactions')
+      .where('import_batch_id', '==', result.import_batch_id)
+      .get();
+    expect(imported.docs[0].get('category_id')).toBe(
+      activeRuleCategory.category_id,
+    );
+    expect(imported.docs[0].get('category_id')).not.toBe(category.category_id);
+    expect(activeRule.rule_id).toBeTruthy();
   });
 
   it('deduplicates bank ids and requires an explicit decision for a fingerprint match', async () => {
@@ -165,22 +278,12 @@ describe('CSV import commit (I-FR-11, I-FR-14, I-FR-29, I-TR-12)', () => {
     const initial = await commitCsvImport(
       deps,
       alice,
-      request(
-        budget.budget_id,
-        account.account_id,
-        'c'.repeat(64),
-        [bankRow],
-      ),
+      request(budget.budget_id, account.account_id, 'c'.repeat(64), [bankRow]),
     );
     const duplicateBank = await commitCsvImport(
       deps,
       alice,
-      request(
-        budget.budget_id,
-        account.account_id,
-        'd'.repeat(64),
-        [bankRow],
-      ),
+      request(budget.budget_id, account.account_id, 'd'.repeat(64), [bankRow]),
     );
     expect(initial.imported_row_count).toBe(1);
     expect(duplicateBank.imported_row_count).toBe(0);
@@ -215,7 +318,7 @@ describe('CSV import commit (I-FR-11, I-FR-14, I-FR-29, I-TR-12)', () => {
 
     const confirmed = await commitCsvImport(deps, alice, {
       ...fingerprintImport,
-      file_sha256: 'g'.repeat(64),
+      file_sha256: 'f'.repeat(64),
       rows: [
         {
           ...fingerprintRow,

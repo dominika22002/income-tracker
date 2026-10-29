@@ -1,0 +1,295 @@
+import React from 'react';
+import {
+  cleanup,
+  configure,
+  fireEvent,
+  render,
+  waitFor,
+  within,
+} from '@testing-library/react';
+import { type RulesTestEnvironment } from '@firebase/rules-unit-testing';
+import { setLogLevel } from 'firebase/firestore';
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+} from 'vitest';
+import { BudgetApp } from '../../src/renderer/src/features/budgets/BudgetApp';
+import { clearFirestore, TestClock } from '../integration/helpers';
+import { createRulesEnv, servicesFor, type TestUser } from './harness';
+
+const USER: TestUser = {
+  uid: 'transactions-ui-user',
+  email: 'transactions-ui-user@example.test',
+  displayName: 'Synthetic User',
+};
+
+describe('transaction, category and search UI (E-FR-25…28, E-FR-35…36)', () => {
+  let env: RulesTestEnvironment;
+  const clock = new TestClock();
+
+  beforeAll(async () => {
+    setLogLevel('silent');
+    configure({ asyncUtilTimeout: 8000 });
+    env = await createRulesEnv();
+  });
+
+  beforeEach(clearFirestore);
+  afterEach(() => {
+    cleanup();
+    window.localStorage.clear();
+  });
+  afterAll(async () => {
+    await env.cleanup();
+  });
+
+  it('creates a category and transaction, edits note and label, then combines search and filters', async () => {
+    const { services, auth } = servicesFor(env, USER, clock);
+    const budget = await services.backend.createBudget({
+      name: 'Synthetic transactions UI',
+    });
+    await services.backend.createAccount({
+      budget_id: budget.budget_id,
+      label: 'Synthetic daily account',
+      currency: 'CHF',
+      account_type: 'CHECKING',
+    });
+    await auth.signIn();
+    const { container } = render(
+      <BudgetApp
+        services={services}
+        requireAuth={false}
+        activeView="transactions"
+      />,
+    );
+    const ui = within(container);
+
+    fireEvent.click(await ui.findByRole('button', { name: 'Kategorie' }));
+    fireEvent.change(ui.getByLabelText('Nazwa nowej kategorii'), {
+      target: { value: 'Synthetic food' },
+    });
+    fireEvent.click(ui.getByRole('button', { name: 'Dodaj kategorię' }));
+    await ui.findByText('Kategoria została dodana.');
+    await ui.findByText(/Synthetic food/);
+    fireEvent.change(ui.getByLabelText('Nazwa nowej kategorii'), {
+      target: { value: 'Synthetic home' },
+    });
+    fireEvent.click(ui.getByRole('button', { name: 'Dodaj kategorię' }));
+    await ui.findByText(/Synthetic home/);
+    fireEvent.click(
+      ui.getByRole('button', { name: 'Przesuń Synthetic food niżej' }),
+    );
+    await ui.findByText(/Synthetic home · Wydatek · kolejność 0/);
+    const foodRow = ui.getByText(/Synthetic food · Wydatek/).closest('li');
+    if (!foodRow) throw new Error('Synthetic category row was not rendered.');
+    const renameFood = within(foodRow).getByRole('button', {
+      name: 'Zmień nazwę',
+    });
+    await waitFor(() => expect(renameFood).toBeEnabled());
+    fireEvent.click(renameFood);
+    fireEvent.change(ui.getByLabelText('Nazwa kategorii Synthetic food'), {
+      target: { value: 'Synthetic groceries' },
+    });
+    fireEvent.click(ui.getByRole('button', { name: 'Zapisz nazwę' }));
+    await ui.findByText(/Synthetic groceries/);
+    const homeRow = ui.getByText(/Synthetic home · Wydatek/).closest('li');
+    if (!homeRow)
+      throw new Error('Synthetic archived category row was not rendered.');
+    const archiveHome = within(homeRow).getByRole('button', {
+      name: 'Archiwizuj',
+    });
+    await waitFor(() => expect(archiveHome).toBeEnabled());
+    fireEvent.click(archiveHome);
+    await ui.findByText(/Synthetic home · Wydatek · kolejność 0 · archiwalna/);
+
+    fireEvent.click(ui.getByRole('button', { name: 'Transakcje' }));
+    fireEvent.click(
+      await ui.findByRole('button', { name: 'Dodaj transakcję' }),
+    );
+    fireEvent.change(ui.getByLabelText('Data transakcji'), {
+      target: { value: '2026-03-10' },
+    });
+    fireEvent.change(ui.getByLabelText('Opis transakcji'), {
+      target: { value: 'Synthetic cafe purchase' },
+    });
+    fireEvent.change(ui.getByLabelText('Kwota transakcji'), {
+      target: { value: '12.5000' },
+    });
+    const categorySelect = ui.getByLabelText('Kategoria transakcji');
+    fireEvent.change(ui.getByLabelText('Kategoria transakcji'), {
+      target: {
+        value: within(categorySelect)
+          .getByRole('option', { name: 'Synthetic groceries' })
+          .getAttribute('value'),
+      },
+    });
+    fireEvent.change(ui.getByLabelText('Notatka transakcji'), {
+      target: { value: 'Synthetic note' },
+    });
+    fireEvent.change(ui.getByLabelText('Etykiety transakcji'), {
+      target: { value: 'coffee, reviewed' },
+    });
+    fireEvent.click(ui.getByRole('button', { name: 'Zapisz transakcję' }));
+    await ui.findByText('Transakcja zapisana.');
+    await ui.findByText('Synthetic cafe purchase');
+
+    fireEvent.click(ui.getAllByRole('button', { name: 'Szczegóły' })[0]);
+    expect(await ui.findByText('Notatka: Synthetic note')).toBeTruthy();
+    expect(ui.getByText('Etykiety: coffee, reviewed')).toBeTruthy();
+    fireEvent.click(ui.getByRole('button', { name: 'Edytuj transakcję' }));
+    fireEvent.change(ui.getByLabelText('Notatka transakcji'), {
+      target: { value: 'Updated synthetic note' },
+    });
+    fireEvent.change(ui.getByLabelText('Etykiety transakcji'), {
+      target: { value: 'coffee, confirmed' },
+    });
+    fireEvent.click(ui.getByRole('button', { name: 'Zapisz transakcję' }));
+    await ui.findByText('Transakcja zapisana.');
+    expect(await ui.findByText('Notatka: Updated synthetic note')).toBeTruthy();
+    expect(ui.getByText('Etykiety: coffee, confirmed')).toBeTruthy();
+
+    fireEvent.change(ui.getByLabelText('Szukaj opisu'), {
+      target: { value: 'cafe' },
+    });
+    const categoryFilter = ui.getByLabelText('Filtr kategorii');
+    fireEvent.change(categoryFilter, {
+      target: {
+        value: within(categoryFilter)
+          .getByRole('option', { name: 'Synthetic groceries' })
+          .getAttribute('value'),
+      },
+    });
+    fireEvent.change(ui.getByLabelText('Filtr daty od'), {
+      target: { value: '2026-03-10' },
+    });
+    fireEvent.change(ui.getByLabelText('Filtr typu'), {
+      target: { value: 'EXPENSE' },
+    });
+    await waitFor(() => {
+      expect(ui.getAllByText('Synthetic cafe purchase').length).toBeGreaterThan(
+        0,
+      );
+      expect(
+        ui.queryByText('Brak transakcji spełniających filtry.'),
+      ).toBeNull();
+    });
+  });
+
+  it('applies an explicit rule and requires confirmation for a local learned suggestion', async () => {
+    const { services, auth } = servicesFor(env, USER, clock);
+    const budget = await services.backend.createBudget({
+      name: 'Synthetic categorization UI',
+    });
+    await services.backend.createAccount({
+      budget_id: budget.budget_id,
+      label: 'Synthetic rule account',
+      currency: 'CHF',
+      account_type: 'CHECKING',
+    });
+    await auth.signIn();
+    const { container } = render(
+      <BudgetApp
+        services={services}
+        requireAuth={false}
+        activeView="transactions"
+      />,
+    );
+    const ui = within(container);
+
+    fireEvent.click(await ui.findByRole('button', { name: 'Kategorie' }));
+    for (const name of ['Synthetic auto', 'Synthetic manual']) {
+      fireEvent.change(ui.getByLabelText('Nazwa nowej kategorii'), {
+        target: { value: name },
+      });
+      fireEvent.click(ui.getByRole('button', { name: 'Dodaj kategorię' }));
+      await ui.findByText('Kategoria została dodana.');
+    }
+
+    fireEvent.click(ui.getByRole('button', { name: 'Reguły' }));
+    fireEvent.change(ui.getByLabelText('Wartość reguły'), {
+      target: { value: 'Synthetic local ride' },
+    });
+    const ruleCategorySelect = ui.getByLabelText('Kategoria reguły');
+    const ruleCategoryId = within(ruleCategorySelect)
+      .getByRole('option', { name: 'Synthetic auto · Wydatek' })
+      .getAttribute('value');
+    fireEvent.change(ruleCategorySelect, {
+      target: { value: ruleCategoryId },
+    });
+    expect(ruleCategorySelect).toHaveValue(ruleCategoryId);
+    const ruleForm = ui
+      .getByRole('button', { name: 'Zapisz regułę' })
+      .closest('form');
+    if (!ruleForm) throw new Error('Rule form was not rendered.');
+    expect((ruleForm as HTMLFormElement).checkValidity()).toBe(true);
+    fireEvent.submit(ruleForm);
+    await ui.findByText('Reguła została zapisana.');
+
+    fireEvent.click(ui.getByRole('button', { name: 'Transakcje' }));
+    fireEvent.click(
+      await ui.findByRole('button', { name: 'Dodaj transakcję' }),
+    );
+    fireEvent.change(ui.getByLabelText('Data transakcji'), {
+      target: { value: '2026-03-11' },
+    });
+    fireEvent.change(ui.getByLabelText('Opis transakcji'), {
+      target: { value: 'Synthetic local ride' },
+    });
+    fireEvent.change(ui.getByLabelText('Kwota transakcji'), {
+      target: { value: '9.00' },
+    });
+    fireEvent.click(ui.getByRole('button', { name: 'Zapisz transakcję' }));
+    await ui.findByText('Synthetic local ride');
+    const automaticRow = ui.getByText('Synthetic local ride').closest('tr');
+    expect(automaticRow).not.toBeNull();
+    expect(
+      within(automaticRow as HTMLElement).getByText('Synthetic auto'),
+    ).toBeTruthy();
+
+    fireEvent.click(
+      within(automaticRow as HTMLElement).getByRole('button', {
+        name: 'Szczegóły',
+      }),
+    );
+    fireEvent.click(ui.getByRole('button', { name: 'Edytuj transakcję' }));
+    const transactionCategory = ui.getByLabelText('Kategoria transakcji');
+    fireEvent.change(transactionCategory, {
+      target: {
+        value: within(transactionCategory)
+          .getByRole('option', { name: 'Synthetic manual' })
+          .getAttribute('value'),
+      },
+    });
+    fireEvent.click(ui.getByRole('button', { name: 'Zapisz transakcję' }));
+    await ui.findByText('Transakcja zapisana.');
+
+    fireEvent.click(
+      await ui.findByRole('button', { name: 'Dodaj transakcję' }),
+    );
+    fireEvent.change(ui.getByLabelText('Data transakcji'), {
+      target: { value: '2026-03-12' },
+    });
+    fireEvent.change(ui.getByLabelText('Opis transakcji'), {
+      target: { value: 'Synthetic local ride' },
+    });
+    await ui.findByText(/Lokalna sugestia:/);
+    const categorySelect = ui.getByLabelText(
+      'Kategoria transakcji',
+    ) as HTMLSelectElement;
+    expect(categorySelect.value).toBe('');
+    fireEvent.click(ui.getByRole('button', { name: 'Potwierdź sugestię' }));
+    expect(categorySelect.value).not.toBe('');
+    fireEvent.change(ui.getByLabelText('Kwota transakcji'), {
+      target: { value: '10.00' },
+    });
+    fireEvent.click(ui.getByRole('button', { name: 'Zapisz transakcję' }));
+    await waitFor(() => {
+      const rows = ui.getAllByText('Synthetic local ride');
+      expect(rows.length).toBeGreaterThanOrEqual(2);
+    });
+  });
+});

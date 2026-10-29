@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
  */
 const PROJECT = 'demo-income-tracker';
 const AUTH = `http://${process.env.FIREBASE_AUTH_EMULATOR_HOST ?? '127.0.0.1:9099'}`;
-const FUNCTIONS = 'http://127.0.0.1:5001';
+const FUNCTIONS = `http://${process.env.FIREBASE_FUNCTIONS_EMULATOR_HOST ?? '127.0.0.1:5001'}`;
 const REGION = 'us-central1';
 
 interface CallResult {
@@ -102,6 +102,38 @@ describe('callable functions on the emulators (I-FR-01, I-FR-02, I-FR-04)', () =
     expect(imported.result).toMatchObject({
       imported_row_count: 1,
       already_imported: false,
+    });
+
+    const category = await call('saveCategory', alice.idToken, {
+      budget_id: budget.budget_id,
+      name: 'Synthetic callable category',
+      kind: 'EXPENSE',
+      sort_order: 0,
+    });
+    const categoryId = (category.result as { category_id: string }).category_id;
+    const rule = await call('saveCategorizationRule', alice.idToken, {
+      budget_id: budget.budget_id,
+      category_id: categoryId,
+      match_field: 'DESCRIPTION',
+      operator: 'CONTAINS',
+      match_value: 'callable manual',
+      priority: 1,
+    });
+    expect(rule.result).toMatchObject({ rule_id: expect.any(String) });
+
+    const manual = await call('saveTransaction', alice.idToken, {
+      budget_id: budget.budget_id,
+      account_id: accountId,
+      operation_date: '2026-03-02',
+      description: 'Synthetic callable manual transaction',
+      amount: '2.5000',
+      currency: 'CHF',
+      type: 'EXPENSE',
+      note: 'Synthetic note',
+      tags: ['synthetic'],
+    });
+    expect(manual.result).toMatchObject({
+      transaction_id: expect.any(String),
     });
 
     const invitation = await call('createInvitation', alice.idToken, {

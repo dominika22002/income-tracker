@@ -69,7 +69,9 @@ describe('StatementCsvPreview', () => {
   });
   const services = {
     backend: {
-      createAccount: vi.fn().mockResolvedValue({ account_id: account.account_id }),
+      createAccount: vi
+        .fn()
+        .mockResolvedValue({ account_id: account.account_id }),
       commitCsvImport,
     },
     data: {
@@ -147,6 +149,23 @@ describe('StatementCsvPreview', () => {
     ).toBeInTheDocument();
   });
 
+  it('explains why import approval is disabled', async () => {
+    render(<StatementCsvPreview services={services} budgets={[budget]} />);
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Wybierz lokalny CSV' }),
+    );
+    await screen.findByText('Plik: synthetic.csv');
+
+    expect(
+      screen.getByRole('button', { name: 'Zatwierdź import' }),
+    ).toBeDisabled();
+    expect(
+      screen.getByText(/Nie można zatwierdzić importu:.*Wybierz budżet/),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Dla każdego wiersza wybierz/)).toBeInTheDocument();
+  });
+
   it('commits only reviewed transaction fields and the local file hash', async () => {
     const { container } = render(
       <StatementCsvPreview services={services} budgets={[budget]} />,
@@ -200,15 +219,16 @@ describe('StatementCsvPreview', () => {
     };
     expect(JSON.stringify(sentPayload)).not.toContain('filePath');
     expect(JSON.stringify(sentPayload)).not.toContain('contentBase64');
-    expect(sentPayload.rows.some((row) => row.decision === 'include')).toBe(true);
+    expect(sentPayload.rows.some((row) => row.decision === 'include')).toBe(
+      true,
+    );
   });
 
   it('requires an explicit choice when the backend flags a possible duplicate', async () => {
     commitCsvImport.mockRejectedValueOnce(
-      Object.assign(
-        new Error('Row 2 may duplicate an existing transaction.'),
-        { code: 'DUPLICATE_REVIEW_REQUIRED' },
-      ),
+      Object.assign(new Error('Row 2 may duplicate an existing transaction.'), {
+        code: 'DUPLICATE_REVIEW_REQUIRED',
+      }),
     );
     const { container } = render(
       <StatementCsvPreview services={services} budgets={[budget]} />,
@@ -220,9 +240,12 @@ describe('StatementCsvPreview', () => {
     fireEvent.change(within(container).getByLabelText('Budżet importu'), {
       target: { value: budget.budget_id },
     });
-    fireEvent.change(await within(container).findByLabelText('Konto źródłowe'), {
-      target: { value: account.account_id },
-    });
+    fireEvent.change(
+      await within(container).findByLabelText('Konto źródłowe'),
+      {
+        target: { value: account.account_id },
+      },
+    );
     const previewRows = Array.from(container.querySelectorAll('li.import-row'));
     for (const row of previewRows) {
       const rowUi = within(row as HTMLElement);
@@ -242,9 +265,7 @@ describe('StatementCsvPreview', () => {
     const row = container.querySelector('li.import-row');
     if (!row) throw new Error('Expected the duplicate candidate row.');
     const rowUi = within(row as HTMLElement);
-    expect(
-      await rowUi.findByText(/może być duplikatem/),
-    ).toBeInTheDocument();
+    expect(await rowUi.findByText(/może być duplikatem/)).toBeInTheDocument();
     fireEvent.click(
       rowUi.getByRole('button', { name: 'To nie duplikat — importuj' }),
     );

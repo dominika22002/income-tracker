@@ -1,4 +1,14 @@
 {
-  "indexes": [],
+  "indexes": [
+    {
+      "collectionGroup": "categorization_rules",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "budget_id", "order": "ASCENDING" },
+        { "fieldPath": "source", "order": "ASCENDING" },
+        { "fieldPath": "enabled", "order": "ASCENDING" }
+      ]
+    }
+  ],
   "fieldOverrides": []
 }

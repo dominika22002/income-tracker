@@ -9,7 +9,10 @@ import {
 } from './invitations';
 import { createBudget } from './budgets';
 import { createAccount } from './accounts';
+import { archiveCategory, saveCategory } from './categories';
+import { saveCategorizationRule } from './categorization';
 import { commitCsvImport } from './imports';
+import { saveTransaction } from './transactions';
 import type { Caller } from './context';
 import { leaveBudget, removeMember } from './memberships';
 import { ensureUserProfile, updatePreferences } from './profile';
@@ -38,6 +41,10 @@ export const CALLABLE_NAMES = [
   'updatePreferences',
   'createBudget',
   'createAccount',
+  'saveTransaction',
+  'saveCategory',
+  'archiveCategory',
+  'saveCategorizationRule',
   'commitCsvImport',
   'createInvitation',
   'previewInvitation',
@@ -72,6 +79,15 @@ export function createHandlers(
       createBudget(deps, callerFromAuth(auth), data),
     createAccount: (auth, data) =>
       createAccount(deps, callerFromAuth(auth), data),
+    saveTransaction: (auth, data) =>
+      saveTransaction(deps, callerFromAuth(auth), data),
+    saveCategory: (auth, data) =>
+      saveCategory(deps, callerFromAuth(auth), data),
+    archiveCategory: async (auth, data) => {
+      await archiveCategory(deps, callerFromAuth(auth), data);
+    },
+    saveCategorizationRule: (auth, data) =>
+      saveCategorizationRule(deps, callerFromAuth(auth), data),
     commitCsvImport: (auth, data) =>
       commitCsvImport(deps, callerFromAuth(auth), data),
     createInvitation: (auth, data) =>
@@ -156,6 +172,11 @@ export function createLocalBackend(
     updatePreferences: (request) => call('updatePreferences', request),
     createBudget: (request) => call('createBudget', request),
     createAccount: (request) => call('createAccount', request),
+    saveTransaction: (request) => call('saveTransaction', request),
+    saveCategory: (request) => call('saveCategory', request),
+    archiveCategory: (request) => call('archiveCategory', request),
+    saveCategorizationRule: (request) =>
+      call('saveCategorizationRule', request),
     commitCsvImport: (request) => call('commitCsvImport', request),
     createInvitation: (request) => call('createInvitation', request),
     previewInvitation: (token) => call('previewInvitation', { token }),

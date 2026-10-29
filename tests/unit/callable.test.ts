@@ -105,5 +105,12 @@ describe('client error handling (TR-11)', () => {
     }
     expect(describeError(new Error('offline'))).toContain('offline');
     expect(describeError(undefined)).toContain('not saved');
+    expect(
+      describeError(
+        Object.assign(new Error('internal [0]'), {
+          code: 'functions/internal',
+        }),
+      ),
+    ).toContain('uruchom lokalne emulatory');
   });
 });

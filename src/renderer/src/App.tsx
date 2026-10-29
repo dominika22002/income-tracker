@@ -2,7 +2,9 @@ import React, { useEffect, useMemo, useState } from 'react';
 import type { OAuthCallbackPayload } from '../../shared/contracts';
 import { deriveSyncStatus } from '../../shared/syncState';
 import type { AppServices } from './backend/ports';
-import { BudgetApp } from './features/budgets/BudgetApp';
+import { BudgetApp, type AppView } from './features/budgets/BudgetApp';
+
+type ThemePreference = 'light' | 'dark' | 'system';
 
 type UiStatus = {
   type: 'info' | 'success' | 'error';
@@ -10,23 +12,49 @@ type UiStatus = {
 };
 
 const DEFAULT_TEST_CONTENT = 'Stage 0 test file from Electron IPC';
+const THEME_STORAGE_KEY = 'income-tracker-theme';
 
-export function App({ services }: { services?: AppServices } = {}) {
-  const [mainHealth, setMainHealth] = useState<string>('Not checked');
+function getStoredTheme(): ThemePreference {
+  const stored = window.localStorage.getItem(THEME_STORAGE_KEY);
+  return stored === 'light' || stored === 'dark' ? stored : 'system';
+}
+
+function isThemePreference(value: string): value is ThemePreference {
+  return value === 'light' || value === 'dark' || value === 'system';
+}
+
+export function App({
+  services,
+  requireAuth = true,
+}: {
+  services?: AppServices;
+  requireAuth?: boolean;
+} = {}) {
+  const hasElectronBridge =
+    typeof window.electronApi !== 'undefined' &&
+    typeof window.electronApi.ping === 'function';
+  const [mainHealth, setMainHealth] = useState<string>(
+    hasElectronBridge ? 'Not checked' : 'Electron preload unavailable',
+  );
   const [selectedFile, setSelectedFile] = useState<string>('None');
   const [testFilePath, setTestFilePath] = useState<string>('Not saved');
-  const [status, setStatus] = useState<UiStatus>({
-    type: 'info',
-    message: 'Ready',
-  });
+  const [status, setStatus] = useState<UiStatus | null>(null);
   const [oauthState, setOAuthState] = useState<string>('Not started');
   const [pendingWrites, setPendingWrites] = useState<boolean>(false);
   const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
+  const [theme, setTheme] = useState<ThemePreference>(getStoredTheme);
+  const [activeView, setActiveView] = useState<AppView>('overview');
 
   useEffect(() => {
+    if (!hasElectronBridge) {
+      return undefined;
+    }
+
     void window.electronApi.ping().then((result) => {
       setMainHealth(result.message);
     });
+
+    if (!requireAuth) return undefined;
 
     const cleanup = window.electronApi.onOAuthCallback(
       (payload: OAuthCallbackPayload) => {
@@ -46,7 +74,7 @@ export function App({ services }: { services?: AppServices } = {}) {
       },
     );
     return cleanup;
-  }, []);
+  }, [hasElectronBridge, requireAuth]);
 
   useEffect(() => {
     const onlineHandler = () => setIsOnline(true);
@@ -63,6 +91,23 @@ export function App({ services }: { services?: AppServices } = {}) {
     () => deriveSyncStatus({ isOnline, hasPendingWrites: pendingWrites }),
     [isOnline, pendingWrites],
   );
+
+  useEffect(() => {
+    const systemTheme = window.matchMedia?.('(prefers-color-scheme: dark)');
+    const applyTheme = () => {
+      document.documentElement.dataset.theme =
+        theme === 'system'
+          ? (systemTheme?.matches ?? false)
+            ? 'dark'
+            : 'light'
+          : theme;
+    };
+
+    applyTheme();
+    window.localStorage.setItem(THEME_STORAGE_KEY, theme);
+    systemTheme?.addEventListener('change', applyTheme);
+    return () => systemTheme?.removeEventListener('change', applyTheme);
+  }, [theme]);
 
   async function handleSelectFile() {
     const result = await window.electronApi.selectLocalFile();
@@ -117,60 +162,162 @@ export function App({ services }: { services?: AppServices } = {}) {
     });
   }
 
+  if (!hasElectronBridge) {
+    return (
+      <main className="app-shell">
+        <section className="card feature-panel">
+          <h1>Income Tracker</h1>
+          <p>
+            Import plików wymaga dostępu do lokalnego systemu plików. Otwórz
+            aplikację desktopową Income Tracker przez `npm run dev`; zwykły
+            podgląd w przeglądarce nie ma mostu Electron.
+          </p>
+        </section>
+      </main>
+    );
+  }
+
   return (
     <main className="app-shell">
-      <h1>Income Tracker — Stage 0 Prototype</h1>
-      <p className="muted">
-        Main process status: <strong>{mainHealth}</strong>
-      </p>
-      <p className="muted">
-        Sync status: <strong data-testid="sync-status">{syncStatus}</strong>
-      </p>
-
-      {services && <BudgetApp services={services} />}
-
-      <section className="card">
-        <h2>Secure IPC prototype</h2>
-        <div className="actions">
-          <button type="button" onClick={handleSelectFile}>
-            Select local file
-          </button>
-          <button type="button" onClick={handleWriteTestFile}>
-            Write test file into app data
-          </button>
-          <button type="button" onClick={handleOAuthStart}>
-            Start Google OAuth in system browser
-          </button>
+      <header className="app-header">
+        <a className="brand" href="#top" aria-label="Income Tracker — początek">
+          <span className="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" focusable="false">
+              <path d="M5 7h14M5 12h14M5 17h14" />
+            </svg>
+          </span>
+          <span>Income Tracker</span>
+        </a>
+        {services && (
+          <nav className="primary-nav" aria-label="Nawigacja główna">
+            {(
+              [
+                ['overview', 'Przegląd'],
+                ['transactions', 'Transakcje'],
+                ['budgets', 'Budżety'],
+                ['imports', 'Importy'],
+                ['settings', 'Ustawienia'],
+              ] as const
+            ).map(([view, label]) => (
+              <button
+                key={view}
+                type="button"
+                className={`nav-pill ${activeView === view ? 'is-active' : ''}`}
+                aria-current={activeView === view ? 'page' : undefined}
+                onClick={() => setActiveView(view)}
+              >
+                {label}
+              </button>
+            ))}
+          </nav>
+        )}
+        <div className="header-controls">
+          <span className="sync-indicator">
+            <span className="sync-dot" aria-hidden="true" />
+            <span>
+              Synchronizacja:{' '}
+              <strong data-testid="sync-status">{syncStatus}</strong>
+            </span>
+          </span>
+          <label className="theme-control">
+            <span>Motyw</span>
+            <select
+              aria-label="Motyw"
+              value={theme}
+              onChange={(event) => {
+                if (isThemePreference(event.target.value)) {
+                  setTheme(event.target.value);
+                }
+              }}
+            >
+              <option value="light">Jasny</option>
+              <option value="dark">Ciemny</option>
+              <option value="system">Systemowy</option>
+            </select>
+          </label>
         </div>
-        <p>
-          Selected file: <code>{selectedFile}</code>
-        </p>
-        <p>
-          Saved test file: <code>{testFilePath}</code>
-        </p>
-        <p>
-          OAuth state: <code>{oauthState}</code>
-        </p>
-      </section>
+      </header>
 
-      <section className="card">
-        <h2>Network simulation</h2>
-        <div className="actions">
-          <button type="button" onClick={() => setIsOnline((value) => !value)}>
-            Toggle online/offline
-          </button>
-          <button
-            type="button"
-            onClick={() => setPendingWrites((value) => !value)}
+      <div className="app-content" id="top">
+        {services && (
+          <BudgetApp
+            services={services}
+            requireAuth={requireAuth}
+            activeView={activeView}
+            onViewChange={setActiveView}
+          />
+        )}
+
+        {import.meta.env.DEV && (
+          <details className="developer-tools">
+            <summary>Narzędzia deweloperskie</summary>
+            <p className="muted">
+              Stan procesu głównego: <strong>{mainHealth}</strong>
+            </p>
+            <div className="actions">
+              <button
+                className="button-secondary"
+                type="button"
+                onClick={handleSelectFile}
+              >
+                Wybierz lokalny plik
+              </button>
+              <button
+                className="button-secondary"
+                type="button"
+                onClick={handleWriteTestFile}
+              >
+                Zapisz plik testowy
+              </button>
+              {requireAuth && (
+                <button
+                  className="button-secondary"
+                  type="button"
+                  onClick={handleOAuthStart}
+                >
+                  Uruchom test OAuth
+                </button>
+              )}
+            </div>
+            <p>
+              Wybrany plik: <code>{selectedFile}</code>
+            </p>
+            <p>
+              Zapisany plik testowy: <code>{testFilePath}</code>
+            </p>
+            {requireAuth && (
+              <p>
+                Stan OAuth: <code>{oauthState}</code>
+              </p>
+            )}
+            <div className="actions">
+              <button
+                className="button-secondary"
+                type="button"
+                onClick={() => setIsOnline((value) => !value)}
+              >
+                Przełącz online/offline
+              </button>
+              <button
+                className="button-secondary"
+                type="button"
+                onClick={() => setPendingWrites((value) => !value)}
+              >
+                Przełącz oczekujące zapisy
+              </button>
+            </div>
+          </details>
+        )}
+
+        {status && (
+          <section
+            className={`status status-${status.type}`}
+            role={status.type === 'error' ? 'alert' : 'status'}
           >
-            Toggle pending writes
-          </button>
-        </div>
-      </section>
-
-      <section className={`status status-${status.type}`} role="status">
-        {status.message}
-      </section>
+            {status.message}
+          </section>
+        )}
+      </div>
     </main>
   );
 }

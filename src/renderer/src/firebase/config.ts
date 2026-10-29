@@ -12,11 +12,28 @@ function readEnv(name: string): string | undefined {
   return value;
 }
 
+function readBooleanEnv(name: string, defaultValue: boolean): boolean {
+  const value = readEnv(name);
+  if (value === undefined) return defaultValue;
+  if (value === 'true') return true;
+  if (value === 'false') return false;
+  throw new Error(`${name} must be set to "true" or "false".`);
+}
+
 function assertProdSecureHost(url: string | undefined): void {
   const mode = import.meta.env.PROD ? 'production' : 'development';
   if (!isSecureProductionUrl(mode, url)) {
     throw new Error(`In production, ${url} must use HTTPS.`);
   }
+}
+
+export const requireAuth = readBooleanEnv('VITE_REQUIRE_AUTH', true);
+const useEmulator = readBooleanEnv('VITE_USE_FIREBASE_EMULATOR', false);
+
+if (!requireAuth && (!import.meta.env.DEV || !useEmulator)) {
+  throw new Error(
+    'VITE_REQUIRE_AUTH=false is only supported in development with Firebase emulators.',
+  );
 }
 
 const firebaseConfig = {
@@ -34,8 +51,6 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const functions = getFunctions(app);
-
-const useEmulator = readEnv('VITE_USE_FIREBASE_EMULATOR') === 'true';
 
 if (useEmulator) {
   const authHost =

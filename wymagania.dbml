@@ -232,6 +232,7 @@ Table categories {
   parent_category_id uuid
   name varchar [not null]
   kind category_kind [not null]
+  sort_order int [not null, default: 0, note: 'Deterministyczna kolejność kategorii w budżecie; wymagana przez FR-26.']
   expense_nature expense_nature
   created_by_membership_id uuid [not null]
   archived_at timestamptz

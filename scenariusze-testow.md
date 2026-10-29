@@ -18,7 +18,7 @@ Ten dokument jest mapą pokrycia wymagań automatycznymi scenariuszami testowymi
 ## Scenariusze funkcjonalne
 
 | Wymaganie               | Jednostkowy | Inny test automatyczny    | Scenariusz i oczekiwany wynik                                                                                                                                                                                 |
-| ----------------------- | ----------- | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ----------------------- | ----------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | <a id="fr-01"></a>FR-01 | U-FR-01     | I-FR-01, E-FR-01; M-FR-01 | Zaloguj się i wyloguj przez atrapę dostawcy OAuth; stan sesji i profil zmieniają się prawidłowo, błędne/anulowane logowanie nie tworzy sesji. Ręcznie sprawdź prawdziwy przepływ w przeglądarce systemowej.   |
 | <a id="fr-02"></a>FR-02 | U-FR-02     | I-FR-02, E-FR-02          | Utworzenie budżetu tworzy dokładnie jeden budżet i pierwsze aktywne członkostwo administratora; awaria pośrednia nie pozostawia częściowego stanu.                                                            |
 | <a id="fr-03"></a>FR-03 | U-FR-03     | I-FR-03, E-FR-03          | Administrator tworzy link; adres zawiera token jednorazowy, baza przechowuje wyłącznie skrót, a osoba niebędąca administratorem nie może utworzyć linku.                                                      |
@@ -117,7 +117,7 @@ Ten dokument jest mapą pokrycia wymagań automatycznymi scenariuszami testowymi
 ## Scenariusze wymagań technicznych
 
 | Wymaganie               | Jednostkowy | Inny test automatyczny | Scenariusz i oczekiwany wynik                                                                                                                                                                                                         |
-| ----------------------- | ----------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| ----------------------- | ----------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | <a id="tr-01"></a>TR-01 | —           | B-TR-01; M-TR-01       | CI buduje artefakt macOS i Windows. Test instalacyjny/smoke na runnerze lub maszynie docelowej potwierdza uruchomienie; nie wymaga obsługi Linuxa.                                                                                    |
 | <a id="tr-02"></a>TR-02 | U-TR-02     | E-TR-02; M-TR-02       | Testy UI sprawdzają kluczowe ekrany i layouty w rozmiarach okna; sprawdź dialog wyboru pliku i zachowanie natywne na obu systemach.                                                                                                   |
 | <a id="tr-03"></a>TR-03 | U-TR-03     | I-TR-03, E-TR-03       | Symuluj offline/online, kolejkę zapisu, potwierdzenie serwera i równoczesną edycję; UI rozróżnia stany i nie gubi niezależnych zmian ani nie zgłasza przedwcześnie sukcesu.                                                           |
@@ -207,16 +207,29 @@ Not automated, left as manual `M-*`: real Google sign-in through the system brow
 
 Commands used by implemented tests in this section: `npm run test:unit`; `npm run test:rules`; `npm run test:functions`.
 
-| Scenario ID               | Implemented test file(s)                                                                                            | Command                  |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------- | ------------------------ |
-| U-FR-10                   | `tests/unit/statementCsvPreview.test.tsx` (picker/read IPC preview with a synthetic fixture; UI unit test, not E2E) | `npm run test:unit`      |
-| U-FR-11, U-FR-14          | `tests/unit/statementCsvPreview.test.tsx` (reviewed-field commit payload, local hash only, explicit duplicate choice) | `npm run test:unit`      |
-| U-FR-12, U-FR-13, U-FR-16 | `tests/unit/statementCsv.test.ts` (two profiles, fields, errors, empty/unknown rows, BOM, delimiter and mapping)    | `npm run test:unit`      |
-| U-FR-38                   | `tests/unit/stage1Validators.test.ts` (validates account payload, owner id, currency and account type)              | `npm run test:unit`      |
-| I-FR-38                   | `tests/integration/accounts.test.ts` (active owner requirement, caller scope, explicit owner assignment)            | `npm run test:rules`     |
-| I-TR-06, I-TR-14          | `tests/rules/firestore.rules.test.ts` (member reads and denied client writes for accounts and import records)       | `npm run test:rules`     |
-| U-FR-11, U-FR-14, U-FR-20 | `tests/unit/stage1Validators.test.ts` (commit payload decisions, dates, decimal values and balance pairing)         | `npm run test:unit`      |
-| I-FR-11, I-FR-14, I-FR-20, I-FR-29, I-TR-12 | `tests/integration/imports.test.ts` (atomic writes, owner/importer, periods, balances, retry, bank IDs and fingerprint decisions) | `npm run test:rules` |
-| I-FR-01 (callable wire)   | `tests/functions/callable.smoke.test.ts` (account and CSV import callables available on emulators)                  | `npm run test:functions` |
+| Scenario ID                                 | Implemented test file(s)                                                                                                          | Command                  |
+| ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ------------------------ |
+| U-FR-10                                     | `tests/unit/statementCsvPreview.test.tsx` (picker/read IPC preview with a synthetic fixture; UI unit test, not E2E)               | `npm run test:unit`      |
+| U-FR-11, U-FR-14                            | `tests/unit/statementCsvPreview.test.tsx` (reviewed-field commit payload, local hash only, explicit duplicate choice)             | `npm run test:unit`      |
+| U-FR-12, U-FR-13, U-FR-16                   | `tests/unit/statementCsv.test.ts` (two profiles, fields, errors, empty/unknown rows, BOM, delimiter and mapping)                  | `npm run test:unit`      |
+| U-FR-38                                     | `tests/unit/stage1Validators.test.ts` (validates account payload, owner id, currency and account type)                            | `npm run test:unit`      |
+| I-FR-38                                     | `tests/integration/accounts.test.ts` (active owner requirement, caller scope, explicit owner assignment)                          | `npm run test:rules`     |
+| I-TR-06, I-TR-14                            | `tests/rules/firestore.rules.test.ts` (member reads and denied client writes for accounts and import records)                     | `npm run test:rules`     |
+| U-FR-11, U-FR-14, U-FR-20                   | `tests/unit/stage1Validators.test.ts` (commit payload decisions, dates, decimal values and balance pairing)                       | `npm run test:unit`      |
+| I-FR-11, I-FR-14, I-FR-20, I-FR-29, I-TR-12 | `tests/integration/imports.test.ts` (atomic writes, owner/importer, periods, balances, retry, bank IDs and fingerprint decisions) | `npm run test:rules`     |
+| I-FR-01 (callable wire)                     | `tests/functions/callable.smoke.test.ts` (account and CSV import callables available on emulators)                                | `npm run test:functions` |
 
 This section maps implemented coverage only. It does not assert execution status; run results are reported separately in implementation summaries. Local CSV preview and the renderer account-selection/commit flow are implemented. Saved parser profiles, PDF parsing and E2E coverage remain pending.
+
+## Stage 3 implementation mapping
+
+| Scenario IDs                                        | Implemented test file(s)                                                                                                                                                         | Command                  |
+| --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------ |
+| U-FR-20, U-FR-24, U-FR-25, U-FR-28, U-FR-35–U-FR-37 | `tests/unit/transactionDomain.test.ts` (required input shape, exact decimals, filtering/sorting, rule priority/inactive/manual-category behavior and explicit local suggestions) | `npm run test:unit`      |
+| I-FR-20, I-FR-29                                    | `tests/integration/imports.test.ts` (source amount, account, import, importer and bank identifier; editing preserves import links)                                               | `npm run test:rules`     |
+| I-FR-24–I-FR-28, I-FR-35–I-FR-37                    | `tests/integration/transactions.test.ts` (transaction CRUD, notes/tags, category archive, active rules and budget-boundary validation)                                           | `npm run test:rules`     |
+| I-TR-06, I-FR-26–I-FR-27                            | `tests/rules/firestore.rules.test.ts` (member-only reads and server-only writes for categories/rules/tags)                                                                       | `npm run test:rules`     |
+| E-FR-25–E-FR-28, E-FR-35–E-FR-36                    | `tests/e2e/transactions.e2e.test.tsx` (category creation, manual add/edit, note/tag, combined filters, explicit rule and confirmation of local suggestion)                       | `npm run test:e2e`       |
+| Callable wiring                                     | `tests/functions/callable.smoke.test.ts` (category/rule/transaction endpoints)                                                                                                   | `npm run test:functions` |
+
+This table describes coverage, not execution status. Suggestions are device-local and not shared with a categorization service; shared `USER` rules are only created through explicit user actions.

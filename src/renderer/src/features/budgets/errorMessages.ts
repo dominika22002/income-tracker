@@ -27,6 +27,14 @@ export function describeError(error: unknown): string {
   if (error instanceof DomainError) {
     return MESSAGES[error.code];
   }
+  const firebaseCode = (error as { code?: unknown } | null)?.code;
+  if (
+    firebaseCode === 'functions/internal' &&
+    error instanceof Error &&
+    /^internal \[\d+\]$/i.test(error.message)
+  ) {
+    return 'Nie można połączyć się z Firebase Functions. Sprawdź połączenie z Firebase lub uruchom lokalne emulatory i spróbuj ponownie.';
+  }
   if ((error as { code?: unknown } | null)?.code === 'permission-denied') {
     return 'You no longer have access to this data.';
   }

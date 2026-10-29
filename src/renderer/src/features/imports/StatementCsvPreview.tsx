@@ -115,7 +115,9 @@ function RowEditor({
   onChange: (field: keyof StatementCsvRow, value: string | null) => void;
   onDecision: (decision: 'include' | 'exclude') => void;
   possibleDuplicateDecision?: DuplicateDecision;
-  onDuplicateDecision: (decision: Exclude<DuplicateDecision, 'pending'>) => void;
+  onDuplicateDecision: (
+    decision: Exclude<DuplicateDecision, 'pending'>,
+  ) => void;
 }) {
   const editableText = (
     field: 'operationDate' | 'description' | 'amount' | 'fee' | 'currency',
@@ -183,16 +185,10 @@ function RowEditor({
             Wiersz może być duplikatem wcześniej zaimportowanej transakcji.
           </p>
           <p>Decyzja o podobieństwie: {possibleDuplicateDecision}</p>
-          <button
-            type="button"
-            onClick={() => onDuplicateDecision('confirm')}
-          >
+          <button type="button" onClick={() => onDuplicateDecision('confirm')}>
             To nie duplikat — importuj
           </button>{' '}
-          <button
-            type="button"
-            onClick={() => onDuplicateDecision('exclude')}
-          >
+          <button type="button" onClick={() => onDuplicateDecision('exclude')}>
             Pomiń jako duplikat
           </button>
         </div>
@@ -214,9 +210,11 @@ function RowEditor({
 export function StatementCsvPreview({
   services,
   budgets,
+  onImportSuccess,
 }: {
   services: ImportServices;
   budgets: MyBudgetView[];
+  onImportSuccess?: (budgetId: string) => void;
 }) {
   const [fileName, setFileName] = useState<string | null>(null);
   const [bytes, setBytes] = useState<Uint8Array | null>(null);
@@ -245,7 +243,55 @@ export function StatementCsvPreview({
   const profileFields = preview?.profileId
     ? PROFILE_FIELDS[preview.profileId]
     : [];
-  const selectedBudget = budgets.find((budget) => budget.budget_id === budgetId);
+  const selectedBudget = budgets.find(
+    (budget) => budget.budget_id === budgetId,
+  );
+  const importBlockers: string[] = [];
+  if (!fileSha256) importBlockers.push('Wybierz i wczytaj plik CSV.');
+  if (!selectedBudget) {
+    importBlockers.push('Wybierz budżet.');
+  } else if (!accountsLoaded) {
+    importBlockers.push('Poczekaj na załadowanie kont.');
+  } else if (!accountId) {
+    importBlockers.push(
+      accounts.length === 0
+        ? 'Utwórz konto dla wybranego budżetu.'
+        : 'Wybierz konto źródłowe.',
+    );
+  }
+  if (preview && (!preview.profileId || !preview.parserVersion)) {
+    importBlockers.push(
+      'Wybierz profil parsera, aby poprawnie rozpoznać dane.',
+    );
+  }
+  if (rows.some((row) => row.decision === 'pending')) {
+    importBlockers.push(
+      'Dla każdego wiersza wybierz „Uwzględnij” albo „Jawnie wyklucz”.',
+    );
+  }
+  if (
+    rows.some((row) => row.decision === 'include' && !hasRequiredFields(row))
+  ) {
+    importBlockers.push(
+      'Popraw wymagane pola we wszystkich uwzględnionych wierszach.',
+    );
+  }
+  if (
+    rows.some(
+      (row) =>
+        row.decision === 'include' &&
+        duplicateDecisions[row.rowNumber] === 'pending',
+    )
+  ) {
+    importBlockers.push(
+      'Rozstrzygnij, czy każdy możliwy duplikat importować, czy pominąć.',
+    );
+  }
+  if (rows.length === 0 && preview) {
+    importBlockers.push('Podgląd nie zawiera wierszy transakcji do importu.');
+  } else if (!rows.some((row) => row.decision === 'include')) {
+    importBlockers.push('Uwzględnij co najmniej jeden prawidłowy wiersz.');
+  }
 
   useEffect(() => {
     if (!selectedBudget) return undefined;
@@ -486,6 +532,7 @@ export function StatementCsvPreview({
     setMessage(null);
     try {
       const result = await services.backend.commitCsvImport(request);
+      onImportSuccess?.(selectedBudget.budget_id);
       setMessage({
         type: 'info',
         text: result.already_imported
@@ -516,7 +563,11 @@ export function StatementCsvPreview({
   }
 
   return (
-    <section className="card" aria-label="Import podglądu CSV">
+    <section
+      className="card feature-panel import-panel"
+      aria-label="Import podglądu CSV"
+      id="csv-import"
+    >
       <h2>Lokalny podgląd wyciągu CSV</h2>
       <p>
         Parsowanie odbywa się na urządzeniu. Do serwera trafiają wyłącznie
@@ -617,9 +668,7 @@ export function StatementCsvPreview({
                 aria-label="Rodzaj konta"
                 value={accountType}
                 onChange={(event) =>
-                  setAccountType(
-                    event.target.value as typeof accountType,
-                  )
+                  setAccountType(event.target.value as typeof accountType)
                 }
               >
                 <option value="CHECKING">Bieżące</option>
@@ -628,10 +677,7 @@ export function StatementCsvPreview({
                 <option value="OTHER">Inne</option>
               </select>
             </label>{' '}
-            <button
-              type="submit"
-              disabled={busy || !accountLabel.trim()}
-            >
+            <button type="submit" disabled={busy || !accountLabel.trim()}>
               Zapisz konto
             </button>{' '}
             <button
@@ -751,9 +797,7 @@ export function StatementCsvPreview({
                 onDecision={(decision) =>
                   updateDecision(row.rowNumber, decision)
                 }
-                possibleDuplicateDecision={
-                  duplicateDecisions[row.rowNumber]
-                }
+                possibleDuplicateDecision={duplicateDecisions[row.rowNumber]}
                 onDuplicateDecision={(decision) =>
                   decideDuplicate(row.rowNumber, decision)
                 }
@@ -769,25 +813,22 @@ export function StatementCsvPreview({
               {rows.filter((row) => row.decision === 'exclude').length}
             </p>
           )}
+          {!busy && importBlockers.length > 0 && (
+            <p id="import-readiness" role="status">
+              Nie można zatwierdzić importu: {importBlockers.join(' ')}
+            </p>
+          )}
           <button
             type="button"
-            disabled={
-            busy ||
-            !selectedBudget ||
-            !accountId ||
-            !fileSha256 ||
-            !preview.profileId ||
-            !rows.some((row) => row.decision === 'include') ||
-            rows.some(
-              (row) =>
-                row.decision === 'pending' ||
-                (row.decision === 'include' && !hasRequiredFields(row)) ||
-                duplicateDecisions[row.rowNumber] === 'pending',
-            )
+            aria-describedby={
+              !busy && importBlockers.length > 0
+                ? 'import-readiness'
+                : undefined
             }
+            disabled={busy || importBlockers.length > 0}
             onClick={() => void commitImport()}
           >
-            Zatwierdź import
+            {busy ? 'Importowanie…' : 'Zatwierdź import'}
           </button>
         </>
       )}

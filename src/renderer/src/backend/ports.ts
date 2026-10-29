@@ -1,9 +1,12 @@
 import type {
   AccountView,
+  CategorizationRuleView,
+  CategoryView,
   BudgetBackend,
   InvitationView,
   MemberView,
   MyBudgetView,
+  TransactionView,
   UserPreferencesRecord,
 } from '../../../shared/contracts';
 
@@ -15,7 +18,10 @@ export interface Session {
 
 /** Login provider boundary; the UI never handles passwords or tokens. */
 export interface AuthGateway {
-  subscribe(listener: (session: Session | null) => void): () => void;
+  subscribe(
+    listener: (session: Session | null) => void,
+    onError: ErrorListener,
+  ): () => void;
   /** Rejects when the sign-in fails or is cancelled; no session is created. */
   signIn(): Promise<void>;
   signOut(): Promise<void>;
@@ -40,6 +46,11 @@ export interface BudgetDataSource {
     onData: (accounts: AccountView[]) => void,
     onError: ErrorListener,
   ): Unsubscribe;
+  subscribeTransactions(
+    budgetId: string,
+    onData: (transactions: TransactionView[]) => void,
+    onError: ErrorListener,
+  ): Unsubscribe;
   subscribeMembers(
     budgetId: string,
     onData: (members: MemberView[]) => void,
@@ -51,6 +62,21 @@ export interface BudgetDataSource {
     onError: ErrorListener,
   ): Unsubscribe;
   getPreferences(uid: string): Promise<UserPreferencesRecord | null>;
+  subscribeBudgetAccounts(
+    budgetId: string,
+    onData: (accounts: AccountView[]) => void,
+    onError: ErrorListener,
+  ): Unsubscribe;
+  subscribeCategories(
+    budgetId: string,
+    onData: (categories: CategoryView[]) => void,
+    onError: ErrorListener,
+  ): Unsubscribe;
+  subscribeCategorizationRules(
+    budgetId: string,
+    onData: (rules: CategorizationRuleView[]) => void,
+    onError: ErrorListener,
+  ): Unsubscribe;
 }
 
 export interface AppServices {

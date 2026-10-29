@@ -6,6 +6,7 @@ out
 .DS_Store
 coverage
 .firebase
+.firebase-data/
 functions/lib
 firebase-debug.log
 firestore-debug.log

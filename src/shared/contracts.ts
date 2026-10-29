@@ -124,6 +124,53 @@ export interface AccountView {
   archived_at: string | null;
 }
 
+export interface TransactionView {
+  transaction_id: string;
+  budget_id: string;
+  account_id: string;
+  account_label: string | null;
+  account_owner_membership_id: string | null;
+  import_batch_id: string | null;
+  imported_by_membership_id: string | null;
+  bank_transaction_id: string | null;
+  operation_date: string;
+  description: string;
+  amount: string;
+  currency: string;
+  type: StatementTransactionType;
+  category_id: string | null;
+  category_name: string | null;
+  note: string | null;
+  tags: string[];
+}
+
+export type CategoryKind = StatementTransactionType;
+export type CategorizationMatchField = 'DESCRIPTION' | 'ACCOUNT' | 'AMOUNT';
+export type CategorizationMatchOperator = 'CONTAINS' | 'EQUALS' | 'STARTS_WITH';
+
+export interface CategoryView {
+  category_id: string;
+  budget_id: string;
+  parent_category_id: string | null;
+  name: string;
+  kind: CategoryKind;
+  sort_order: number;
+  archived_at: string | null;
+}
+
+export interface CategorizationRuleView {
+  rule_id: string;
+  budget_id: string;
+  category_id: string;
+  category_name: string;
+  source: 'USER' | 'LEARNED';
+  match_field: CategorizationMatchField;
+  operator: CategorizationMatchOperator;
+  match_value: string;
+  priority: number;
+  enabled: boolean;
+}
+
 export type DomainErrorCode =
   | 'UNAUTHENTICATED'
   | 'INVALID_ARGUMENT'
@@ -197,6 +244,63 @@ export interface CreateAccountResult {
   account_id: string;
 }
 
+export interface SaveTransactionRequest {
+  budget_id: string;
+  account_id: string;
+  operation_date: string;
+  description: string;
+  amount: string;
+  currency: string;
+  type: StatementTransactionType;
+  category_id?: string | null;
+  note?: string | null;
+  tags?: string[];
+  transaction_id?: string;
+  create_rule?: {
+    match_field: CategorizationMatchField;
+    operator: CategorizationMatchOperator;
+    match_value: string;
+    priority: number;
+  };
+}
+
+export interface SaveTransactionResult {
+  transaction_id: string;
+}
+
+export interface SaveCategoryRequest {
+  budget_id: string;
+  category_id?: string;
+  parent_category_id?: string | null;
+  name: string;
+  kind: CategoryKind;
+  sort_order: number;
+}
+
+export interface SaveCategoryResult {
+  category_id: string;
+}
+
+export interface ArchiveCategoryRequest {
+  budget_id: string;
+  category_id: string;
+}
+
+export interface SaveCategorizationRuleRequest {
+  budget_id: string;
+  category_id: string;
+  match_field: CategorizationMatchField;
+  operator: CategorizationMatchOperator;
+  match_value: string;
+  priority: number;
+  enabled?: boolean;
+  rule_id?: string;
+}
+
+export interface SaveCategorizationRuleResult {
+  rule_id: string;
+}
+
 export type StatementImportFormat = 'CSV' | 'PDF';
 export type StatementImportRowDecision = 'include' | 'exclude' | 'pending';
 export type StatementTransactionType = 'EXPENSE' | 'INCOME' | 'TRANSFER';
@@ -252,6 +356,14 @@ export interface BudgetBackend {
   ): Promise<UserPreferencesRecord>;
   createBudget(request: CreateBudgetRequest): Promise<CreateBudgetResult>;
   createAccount(request: CreateAccountRequest): Promise<CreateAccountResult>;
+  saveTransaction(
+    request: SaveTransactionRequest,
+  ): Promise<SaveTransactionResult>;
+  saveCategory(request: SaveCategoryRequest): Promise<SaveCategoryResult>;
+  archiveCategory(request: ArchiveCategoryRequest): Promise<void>;
+  saveCategorizationRule(
+    request: SaveCategorizationRuleRequest,
+  ): Promise<SaveCategorizationRuleResult>;
   commitCsvImport(
     request: CommitCsvImportRequest,
   ): Promise<CommitCsvImportResult>;

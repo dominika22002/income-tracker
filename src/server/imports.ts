@@ -11,6 +11,7 @@ import type {
 } from '../shared/contracts';
 import { COLLECTIONS } from '../shared/firestorePaths';
 import { DomainError } from '../shared/domain/errors';
+import { findMatchingUserRule } from '../shared/domain/transactions';
 import { validateCommitCsvImportRequest } from '../shared/validators';
 import { readActiveMembership } from './access';
 import { accountFromSnapshot, toTimestamp } from './converters';
@@ -31,12 +32,16 @@ function importHashKey(accountId: string, fileHash: string): string {
 }
 
 function bankKey(accountId: string, bankId: string): string {
-  return sha256(`${accountId}\0${bankId}`);
+  const hex = sha256(`${accountId}\0${bankId}`).slice(0, 32).split('');
+  hex[12] = '4';
+  hex[16] = ((parseInt(hex[16], 16) & 0x3) | 0x8).toString(16);
+  const value = hex.join('');
+  return `${value.slice(0, 8)}-${value.slice(8, 12)}-${value.slice(12, 16)}-${value.slice(16, 20)}-${value.slice(20)}`;
 }
 
 function normalizedFingerprint(row: StatementImportRowRequest): string {
-  const description = row.description!
-    .normalize('NFKC')
+  const description = row
+    .description!.normalize('NFKC')
     .trim()
     .replace(/\s+/g, ' ')
     .toLocaleLowerCase('pl-PL');
@@ -76,7 +81,9 @@ function periodsFor(dates: readonly string[]): ImportPeriodView[] {
   return periods;
 }
 
-function priorResult(value: FirebaseFirestore.DocumentData): CommitCsvImportResult {
+function priorResult(
+  value: FirebaseFirestore.DocumentData,
+): CommitCsvImportResult {
   return {
     import_batch_id: value.import_batch_id as string,
     imported_row_count: value.imported_row_count as number,
@@ -116,7 +123,9 @@ export async function commitCsvImport(
     throw new DomainError('INVALID_ARGUMENT', 'Invalid CSV import request.');
   }
 
-  const accountRef = deps.db.doc(`${COLLECTIONS.accounts}/${validated.account_id}`);
+  const accountRef = deps.db.doc(
+    `${COLLECTIONS.accounts}/${validated.account_id}`,
+  );
   const importId = deps.newId();
   const batchRef = deps.db.doc(`${IMPORT_BATCHES}/${importId}`);
   const hashRef = deps.db.doc(
@@ -165,6 +174,24 @@ export async function commitCsvImport(
       return priorResult(previousHash.data() ?? {});
     }
 
+    const [categories, categorizationRules] = await Promise.all([
+      tx.get(
+        deps.db
+          .collection(COLLECTIONS.categories)
+          .where('budget_id', '==', validated.budget_id),
+      ),
+      tx.get(
+        deps.db
+          .collection(COLLECTIONS.categorizationRules)
+          .where('budget_id', '==', validated.budget_id)
+          .where('source', '==', 'USER')
+          .where('enabled', '==', true),
+      ),
+    ]);
+    const categoriesById = new Map(
+      categories.docs.map((category) => [category.id, category]),
+    );
+
     const includeRows = validated.rows.filter(
       (row) => row.decision === 'include',
     );
@@ -175,9 +202,7 @@ export async function commitCsvImport(
           validated.account_id,
           row.bank_transaction_id,
         );
-        const transactionRef = deps.db.doc(
-          `${TRANSACTIONS}/${transactionId}`,
-        );
+        const transactionRef = deps.db.doc(`${TRANSACTIONS}/${transactionId}`);
         return {
           row,
           fingerprint,
@@ -210,14 +235,10 @@ export async function commitCsvImport(
     );
     refs.forEach((item, index) => {
       const snapshot = duplicateSnapshots[index];
-      item.previousDuplicate =
-        'docs' in snapshot ? snapshot.docs[0] : snapshot;
+      item.previousDuplicate = 'docs' in snapshot ? snapshot.docs[0] : snapshot;
     });
 
-    const balanceRows = new Map<
-      string,
-      { amount: string; currency: string }
-    >();
+    const balanceRows = new Map<string, { amount: string; currency: string }>();
     for (const row of includeRows) {
       if (row.balance && row.balance_currency && row.operation_date) {
         balanceRows.set(row.operation_date, {
@@ -300,9 +321,7 @@ export async function commitCsvImport(
 
     const balanceRowsToWrite = new Map(
       accepted.flatMap((item) =>
-        item.row.balance &&
-        item.row.balance_currency &&
-        item.row.operation_date
+        item.row.balance && item.row.balance_currency && item.row.operation_date
           ? [
               [
                 item.row.operation_date,
@@ -321,6 +340,31 @@ export async function commitCsvImport(
     const now = deps.now();
     for (const item of accepted) {
       const row = item.row;
+      const rule = findMatchingUserRule(
+        {
+          description: row.description!,
+          amount: row.amount!,
+          account_id: validated.account_id,
+        },
+        categorizationRules.docs.map((candidate) => ({
+          rule_id: candidate.id,
+          category_id: candidate.get('category_id') as string,
+          match_field: candidate.get('match_field'),
+          operator: candidate.get('operator'),
+          match_value: candidate.get('match_value') as string,
+          priority: candidate.get('priority') as number,
+          enabled: candidate.get('enabled') === true,
+        })),
+      );
+      const matchedCategory = rule
+        ? categoriesById.get(rule.category_id)
+        : undefined;
+      const categoryId =
+        matchedCategory &&
+        matchedCategory.get('kind') === row.transaction_type &&
+        matchedCategory.get('archived_at') == null
+          ? matchedCategory.id
+          : null;
       tx.create(item.transactionRef, {
         budget_id: validated.budget_id,
         account_id: validated.account_id,
@@ -333,6 +377,7 @@ export async function commitCsvImport(
         amount: row.amount,
         currency: row.currency,
         type: row.transaction_type,
+        category_id: categoryId,
         fee: row.fee ?? null,
         source_status: row.source_status ?? null,
         balance: row.balance ?? null,

@@ -88,6 +88,24 @@ describe('Firestore rules: budget access', () => {
         account_id: 'acc-a-1',
         amount: '1.00',
       });
+      await setDoc(doc(db, 'categories/category-a-1'), {
+        budget_id: 'budget-a',
+        name: 'Synthetic category',
+        kind: 'EXPENSE',
+      });
+      await setDoc(doc(db, 'categorization_rules/rule-a-1'), {
+        budget_id: 'budget-a',
+        category_id: 'category-a-1',
+        source: 'USER',
+      });
+      await setDoc(doc(db, 'tags/tag-a-1'), {
+        budget_id: 'budget-a',
+        name: 'synthetic-tag',
+      });
+      await setDoc(doc(db, 'transaction_tags/link-a-1'), {
+        transaction_id: 'transaction-a-1',
+        tag_id: 'tag-a-1',
+      });
       await setDoc(doc(db, 'account_balance_snapshots/snapshot-a-1'), {
         account_id: 'acc-a-1',
         balance_amount: '10.00',
@@ -174,6 +192,27 @@ describe('Firestore rules: budget access', () => {
       ]) {
         await assertSucceeds(getDoc(doc(asUser('member-1'), path)));
         await assertFails(getDoc(doc(asUser('other-owner'), path)));
+      }
+    });
+
+    it('restricts categories, rules and labels to active budget members and denies client writes', async () => {
+      const ownerDb = asUser('owner-1');
+      const memberDb = asUser('member-1');
+      const outsiderDb = asUser('other-owner');
+      const paths = [
+        'categories/category-a-1',
+        'categorization_rules/rule-a-1',
+        'tags/tag-a-1',
+        'transaction_tags/link-a-1',
+      ];
+      for (const path of paths) {
+        await assertSucceeds(getDoc(doc(memberDb, path)));
+        await assertFails(getDoc(doc(outsiderDb, path)));
+        await assertFails(
+          setDoc(doc(ownerDb, path), { budget_id: 'budget-a' }),
+        );
+        await assertFails(updateDoc(doc(ownerDb, path), { name: 'changed' }));
+        await assertFails(deleteDoc(doc(ownerDb, path)));
       }
     });
   });

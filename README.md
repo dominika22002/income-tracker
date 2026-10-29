@@ -33,6 +33,23 @@ This repository contains Stage 0 implementation for a desktop prototype based on
    - callback parsing and state validation,
    - user-visible error/success messages.
 
+   For local development, set `VITE_REQUIRE_AUTH=false` while using the Firebase
+   emulators to sign in automatically as `dominika22002`. This development
+   account is created in the Auth Emulator; OAuth is not started. The app rejects
+   this setting outside development or without the emulators, and authentication
+   remains required by default. Keep the Firebase emulators running in one
+   terminal:
+
+   ```sh
+   npm run emulators:dev
+   ```
+
+   Auth and Firestore emulator data is imported at startup and exported on
+   shutdown in the local, git-ignored `.firebase-data` directory. This uses the
+   Firebase Emulator Suite and the same Firestore schema and callable Functions
+   as the app; it does not create a separate database implementation. Launch
+   the Electron app in a second terminal with `npm run dev`.
+
 3. **Firestore rules aligned to DBML intent (Stage 0 subset, extended in Stage 1)**  
    DBML is the source of truth. Stage 0 uses a reduced subset for access-rule verification:
    - `users`
@@ -57,6 +74,15 @@ npm run test:rules      # rules + service integration tests (Firestore emulator,
 npm run test:e2e        # UI flows against the emulator (needs Java)
 npm run test:functions  # callable functions on Auth/Firestore/Functions emulators (needs Java)
 ```
+
+## Stage 3: transactions, categories and categorization
+
+- Imported and manual transactions share `transactions`; writes go through callable Cloud Functions and validate budget, account, category and tag relationships on the server.
+- Transaction browsing supports combined search, filters and sorting. Categories are ordered, renamed and archived; labels and notes are stored with budget-scoped records.
+- Only enabled `USER` rules categorize automatically. Learned suggestions remain in local storage and require explicit confirmation; transaction descriptions are not sent to categorization services.
+- `categories.sort_order` is the DBML field that persists the ordering required by FR-26.
+
+Run unit, rules/integration and UI tests with `npm run test:unit`, `npm run test:rules` and `npm run test:e2e`.
 
 ## Prerequisites
 
@@ -146,6 +172,6 @@ Jobs:
 
 - The OAuth callback is prototyped; full token exchange and durable Firebase session refresh for production requires additional provider/backend setup.
 - Build signing/notarization is not configured (intentional Stage 0 limitation).
-- Full DBML model is not implemented in Firestore yet: Stage 1 covers users, preferences, budgets, memberships and invitations; accounts, imports, transactions and the rest follow in later stages.
+- The full DBML model is not implemented in Firestore yet. Stages 1–3 cover access, accounts/imports and core transactions/categories; features assigned to later stages remain deferred.
 - The live Google sign-in (token exchange into a Firebase session) is still the Stage 0 prototype; Stage 1 flows are tested with a provider stand-in.
 - Real-time behavior of listeners was verified on the emulator only.
