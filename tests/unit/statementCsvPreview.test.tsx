@@ -40,6 +40,15 @@ function mockApi(): IpcApi {
         ),
       ).toString('base64'),
     }),
+    saveBackupFile: vi.fn().mockResolvedValue({ status: 'canceled' }),
+    selectBackupFile: vi.fn().mockResolvedValue({ status: 'canceled' }),
+    archiveImportedStatement: vi.fn().mockResolvedValue({ status: 'saved' }),
+    listLocalStatementFiles: vi
+      .fn()
+      .mockResolvedValue({ status: 'loaded', files: [] }),
+    restoreLocalStatementFiles: vi
+      .fn()
+      .mockResolvedValue({ status: 'saved', count: 0 }),
     writeTestFile: vi.fn().mockResolvedValue({ success: true }),
     startGoogleOAuth: vi.fn().mockResolvedValue({ launched: true }),
     onOAuthCallback: vi.fn().mockReturnValue(() => undefined),

@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import type { SaveAccountBalanceResult } from '../shared/contracts';
 import { DomainError } from '../shared/domain/errors';
-import { COLLECTIONS } from '../shared/firestorePaths';
+import { budgetDocumentPath, COLLECTIONS } from '../shared/firestorePaths';
 import { validateSaveAccountBalanceRequest } from '../shared/validators';
 import { readActiveMembership } from './access';
 import { requireCaller, type Caller, type ServerDeps } from './context';
@@ -23,16 +23,25 @@ export async function saveAccountBalance(
     throw new DomainError('INVALID_ARGUMENT', 'Invalid account balance.');
   }
   const id = snapshotId(request.account_id, request.balance_date);
-  const accountRef = deps.db.doc(
-    `${COLLECTIONS.accounts}/${request.account_id}`,
-  );
-  const snapshotRef = deps.db.doc(
-    `${COLLECTIONS.accountBalanceSnapshots}/${id}`,
-  );
-
   await deps.db.runTransaction(async (tx) => {
     const actor = await readActiveMembership(deps, tx, request.budget_id, uid);
     if (!actor) throw new DomainError('NOT_ACTIVE_MEMBER');
+    const accountRef = deps.db.doc(
+      budgetDocumentPath(
+        request.budget_id,
+        actor.active_revision_id,
+        COLLECTIONS.accounts,
+        request.account_id,
+      ),
+    );
+    const snapshotRef = deps.db.doc(
+      budgetDocumentPath(
+        request.budget_id,
+        actor.active_revision_id,
+        COLLECTIONS.accountBalanceSnapshots,
+        id,
+      ),
+    );
     const [account, existing] = await Promise.all([
       tx.get(accountRef),
       tx.get(snapshotRef),

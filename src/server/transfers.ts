@@ -5,7 +5,11 @@ import type {
 import { multiplyDecimals, sumDecimals } from '../shared/domain/currency';
 import { compareDecimalAmounts } from '../shared/domain/transactions';
 import { DomainError } from '../shared/domain/errors';
-import { COLLECTIONS } from '../shared/firestorePaths';
+import {
+  budgetCollectionPath,
+  budgetDocumentPath,
+  COLLECTIONS,
+} from '../shared/firestorePaths';
 import { validateReviewTransferRequest } from '../shared/validators';
 import { readActiveMembership } from './access';
 import {
@@ -79,20 +83,32 @@ export async function reviewTransfer(
     throw new DomainError('INVALID_ARGUMENT', 'Invalid transfer review.');
 
   const transferGroupId = groupId(request);
-  const groupRef = deps.db.doc(
-    `${COLLECTIONS.transferGroups}/${transferGroupId}`,
-  );
   const ids =
     request.decision === 'CONFIRM_UNPAIRED'
       ? [request.transaction_id!]
       : [request.outgoing_transaction_id!, request.incoming_transaction_id!];
-  const transactionRefs = ids.map((id) =>
-    deps.db.doc(`${COLLECTIONS.transactions}/${id}`),
-  );
 
   const preflight = await deps.db.runTransaction(async (tx) => {
     const actor = await readActiveMembership(deps, tx, request.budget_id, uid);
     if (!actor) throw new DomainError('NOT_ACTIVE_MEMBER');
+    const groupRef = deps.db.doc(
+      budgetDocumentPath(
+        request.budget_id,
+        actor.active_revision_id,
+        COLLECTIONS.transferGroups,
+        transferGroupId,
+      ),
+    );
+    const transactionRefs = ids.map((id) =>
+      deps.db.doc(
+        budgetDocumentPath(
+          request.budget_id,
+          actor.active_revision_id,
+          COLLECTIONS.transactions,
+          id,
+        ),
+      ),
+    );
     const [group, ...transactions] = await Promise.all([
       tx.get(groupRef),
       ...transactionRefs.map((ref) => tx.get(ref)),
@@ -105,6 +121,7 @@ export async function reviewTransfer(
     if (groupAlreadyConfirmed) {
       return {
         actorMembershipId: actor.membership_id,
+        activeRevisionId: actor.active_revision_id,
         existingResult: {
           transfer_group_id: transferGroupId,
           status: group.get('status') as ReviewTransferResult['status'],
@@ -127,7 +144,16 @@ export async function reviewTransfer(
     if (request.decision !== 'REJECT') {
       const accounts = await Promise.all(
         legs.map((leg) =>
-          tx.get(deps.db.doc(`${COLLECTIONS.accounts}/${leg.account_id}`)),
+          tx.get(
+            deps.db.doc(
+              budgetDocumentPath(
+                request.budget_id,
+                actor.active_revision_id,
+                COLLECTIONS.accounts,
+                leg.account_id,
+              ),
+            ),
+          ),
         ),
       );
       if (
@@ -145,7 +171,13 @@ export async function reviewTransfer(
         legs.map((leg) =>
           tx.get(
             deps.db
-              .collection(COLLECTIONS.splitItems)
+              .collection(
+                budgetCollectionPath(
+                  request.budget_id,
+                  actor.active_revision_id,
+                  COLLECTIONS.splitItems,
+                ),
+              )
               .where('budget_id', '==', request.budget_id)
               .where('transaction_id', '==', leg.id),
           ),
@@ -184,11 +216,30 @@ export async function reviewTransfer(
     }
     return {
       actorMembershipId: actor.membership_id,
+      activeRevisionId: actor.active_revision_id,
       existingResult: null,
       legs,
     };
   });
   if (preflight.existingResult) return preflight.existingResult;
+  const groupRef = deps.db.doc(
+    budgetDocumentPath(
+      request.budget_id,
+      preflight.activeRevisionId,
+      COLLECTIONS.transferGroups,
+      transferGroupId,
+    ),
+  );
+  const transactionRefs = ids.map((id) =>
+    deps.db.doc(
+      budgetDocumentPath(
+        request.budget_id,
+        preflight.activeRevisionId,
+        COLLECTIONS.transactions,
+        id,
+      ),
+    ),
+  );
   if (request.decision === 'REJECT') {
     await deps.db.runTransaction(async (tx) => {
       const actor = await readActiveMembership(
@@ -199,6 +250,9 @@ export async function reviewTransfer(
       );
       if (!actor || actor.membership_id !== preflight.actorMembershipId) {
         throw new DomainError('NOT_ACTIVE_MEMBER');
+      }
+      if (actor.active_revision_id !== preflight.activeRevisionId) {
+        throw new DomainError('INVALID_TRANSITION');
       }
       const [group, ...transactions] = await Promise.all([
         tx.get(groupRef),
@@ -270,12 +324,24 @@ export async function reviewTransfer(
     (leg) => leg.fee && compareDecimalAmounts(leg.fee, '0') > 0,
   );
   const feeRefs = fees.map((leg) =>
-    deps.db.doc(`${COLLECTIONS.transactions}/${feeExpenseId(leg.id)}`),
+    deps.db.doc(
+      budgetDocumentPath(
+        request.budget_id,
+        preflight.activeRevisionId,
+        COLLECTIONS.transactions,
+        feeExpenseId(leg.id),
+      ),
+    ),
   );
   const differenceRef =
     difference && compareDecimalAmounts(difference, '0') > 0 && outgoing
       ? deps.db.doc(
-          `${COLLECTIONS.transactions}/${differenceExpenseId(transferGroupId)}`,
+          budgetDocumentPath(
+            request.budget_id,
+            preflight.activeRevisionId,
+            COLLECTIONS.transactions,
+            differenceExpenseId(transferGroupId),
+          ),
         )
       : null;
   const rateRefs = fxRate
@@ -296,7 +362,11 @@ export async function reviewTransfer(
 
   await deps.db.runTransaction(async (tx) => {
     const actor = await readActiveMembership(deps, tx, request.budget_id, uid);
-    if (!actor || actor.membership_id !== preflight.actorMembershipId) {
+    if (
+      !actor ||
+      actor.membership_id !== preflight.actorMembershipId ||
+      actor.active_revision_id !== preflight.activeRevisionId
+    ) {
       throw new DomainError('NOT_ACTIVE_MEMBER');
     }
     const [group, ...transactions] = await Promise.all([

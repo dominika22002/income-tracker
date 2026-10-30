@@ -6,9 +6,20 @@ import {
   onSnapshot,
   query,
   where,
+  Timestamp,
+  type CollectionReference,
   type Firestore,
-  type Timestamp,
+  type Query,
+  type QueryDocumentSnapshot,
+  type QuerySnapshot,
 } from 'firebase/firestore';
+import {
+  BACKUP_COLLECTIONS,
+  COLLECTIONS,
+  budgetCollectionPath,
+  budgetDocumentPath,
+} from '../../../shared/firestorePaths';
+import type { BackupPayload, BackupRecord } from '../../../shared/domain/backup';
 import type {
   AccountView,
   AccountBalanceView,
@@ -33,8 +44,273 @@ function iso(value: unknown): string {
   return (value as Timestamp).toDate().toISOString();
 }
 
+function serializable(value: unknown): unknown {
+  if (value instanceof Timestamp) {
+    return { __incomeTrackerTimestamp: value.toDate().toISOString() };
+  }
+  if (value instanceof Date) {
+    return { __incomeTrackerTimestamp: value.toISOString() };
+  }
+  if (Array.isArray(value)) return value.map(serializable);
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, nested]) => [key, serializable(nested)]),
+    );
+  }
+  return value;
+}
+
+function backupRecords(
+  documents: QueryDocumentSnapshot[],
+): BackupRecord[] {
+  return documents.map((document) => ({
+    document_id: document.id,
+    data: serializable(document.data()) as Record<string, unknown>,
+  }));
+}
+
+async function documentsByValues(
+  db: Firestore,
+  path: string,
+  field: string,
+  values: string[],
+): Promise<QueryDocumentSnapshot[]> {
+  const snapshots = await Promise.all(
+    Array.from({ length: Math.ceil(values.length / 30) }, (_, index) =>
+      getDocs(
+        query(
+          collection(db, path),
+          where(field, 'in', values.slice(index * 30, (index + 1) * 30)),
+        ),
+      ),
+    ),
+  );
+  return snapshots.flatMap((snapshot) => snapshot.docs);
+}
+
+function subscribeBudgetCollection<T>(
+  db: Firestore,
+  budgetId: string,
+  collectionName: string,
+  createQuery: (source: CollectionReference) => Query,
+  onData: (snapshot: T, revisionId: string | null) => void,
+  onError: (error: Error) => void,
+): () => void {
+  let activeRevisionId: string | null | undefined;
+  let unsubscribeRecords: (() => void) | undefined;
+  const unsubscribeBudget = onSnapshot(
+    doc(db, 'budgets', budgetId),
+    (budget) => {
+      if (!budget.exists()) {
+        onError(new Error('The selected budget no longer exists.'));
+        return;
+      }
+      const revisionId =
+        (budget.get('active_revision_id') as string | null | undefined) ?? null;
+      if (revisionId === activeRevisionId) return;
+      activeRevisionId = revisionId;
+      unsubscribeRecords?.();
+      unsubscribeRecords = onSnapshot(
+        createQuery(
+          collection(
+            db,
+            budgetCollectionPath(budgetId, revisionId, collectionName),
+          ),
+        ),
+        (snapshot) => onData(snapshot as T, revisionId),
+        onError,
+      );
+    },
+    onError,
+  );
+  return () => {
+    unsubscribeRecords?.();
+    unsubscribeBudget();
+  };
+}
+
 export function createFirestoreDataSource(db: Firestore): BudgetDataSource {
   return {
+    async exportBudgetSnapshot(budgetId, userId): Promise<BackupPayload> {
+      const budgetRef = doc(db, 'budgets', budgetId);
+      const budget = await getDoc(budgetRef);
+      if (!budget.exists()) {
+        throw new Error('The selected budget no longer exists.');
+      }
+      const revisionId =
+        (budget.get('active_revision_id') as string | null | undefined) ?? null;
+      const paths = Object.fromEntries(
+        BACKUP_COLLECTIONS.map((name) => [
+          name,
+          budgetCollectionPath(budgetId, revisionId, name),
+        ]),
+      ) as Record<(typeof BACKUP_COLLECTIONS)[number], string>;
+
+      const scoped = await Promise.all(
+        BACKUP_COLLECTIONS.map(async (name) => {
+          if (
+            name === COLLECTIONS.exchangeRates ||
+            name === COLLECTIONS.transactionConversions ||
+            name === COLLECTIONS.transactionTags ||
+            name === COLLECTIONS.accountBalanceSnapshots
+          ) {
+            return [name, []] as const;
+          }
+          const result = await getDocs(
+            query(
+              collection(db, paths[name]),
+              where('budget_id', '==', budgetId),
+            ),
+          );
+          return [name, backupRecords(result.docs)] as const;
+        }),
+      );
+      const datasets = Object.fromEntries(scoped) as BackupPayload['datasets'];
+      const transactionIds = datasets.transactions.map(
+        (record) => record.document_id,
+      );
+      const accountIds = datasets.accounts.map((record) => record.document_id);
+      const [tagLinks, conversions, balances] = await Promise.all([
+        documentsByValues(
+          db,
+          paths[COLLECTIONS.transactionTags],
+          'transaction_id',
+          transactionIds,
+        ),
+        documentsByValues(
+          db,
+          paths[COLLECTIONS.transactionConversions],
+          'transaction_id',
+          transactionIds,
+        ),
+        documentsByValues(
+          db,
+          paths[COLLECTIONS.accountBalanceSnapshots],
+          'account_id',
+          accountIds,
+        ),
+      ]);
+      datasets.transaction_tags = backupRecords(tagLinks);
+      datasets.transaction_conversions = backupRecords(conversions);
+      datasets.account_balance_snapshots = backupRecords(balances);
+
+      const nestedRates =
+        revisionId === null
+          ? []
+          : backupRecords(
+              (
+                await getDocs(
+                  collection(db, paths[COLLECTIONS.exchangeRates]),
+                )
+              ).docs,
+            );
+      const referencedRateIds = [
+        ...datasets.transaction_conversions.map(
+          (record) => record.data.exchange_rate_id,
+        ),
+        ...datasets.transfer_groups.map((record) => record.data.fx_rate_id),
+      ].filter((value): value is string => typeof value === 'string');
+      const presentRateIds = new Set(
+        nestedRates.map((record) => record.document_id),
+      );
+      const legacyRates =
+        revisionId === null
+          ? await Promise.all(
+              [...new Set(referencedRateIds)]
+                .filter((id) => !presentRateIds.has(id))
+                .map(async (id) => {
+                  const rate = await getDoc(
+                    doc(db, COLLECTIONS.exchangeRates, id),
+                  );
+                  return rate.exists()
+                    ? {
+                        document_id: rate.id,
+                        data: serializable(
+                          rate.data(),
+                        ) as Record<string, unknown>,
+                      }
+                    : null;
+                }),
+            )
+          : [];
+      datasets.exchange_rates = [
+        ...nestedRates,
+        ...legacyRates.filter(
+          (record): record is BackupRecord => record !== null,
+        ),
+      ];
+
+      const [liveMemberships, revisionMemberships, preferences] =
+        await Promise.all([
+          getDocs(
+            query(
+              collection(db, COLLECTIONS.memberships),
+              where('budget_id', '==', budgetId),
+            ),
+          ),
+          revisionId === null
+            ? Promise.resolve(null)
+            : getDocs(
+                collection(
+                  db,
+                  `${budgetCollectionPath(
+                    budgetId,
+                    revisionId,
+                    'membership_history',
+                  )}`,
+                ),
+              ),
+          getDoc(doc(db, COLLECTIONS.userPreferences, userId)),
+        ]);
+      const membershipsById = new Map(
+        (revisionMemberships?.docs ?? []).map((document) => [
+          document.id,
+          {
+            document_id: document.id,
+            data: serializable(document.data()) as Record<string, unknown>,
+          },
+        ]),
+      );
+      liveMemberships.docs.forEach((document) =>
+        membershipsById.set(document.id, {
+          document_id: document.id,
+          data: serializable(document.data()) as Record<string, unknown>,
+        }),
+      );
+      const currentBudget = await getDoc(budgetRef);
+      if (
+        !currentBudget.exists() ||
+        ((currentBudget.get('active_revision_id') as string | null | undefined) ??
+          null) !== revisionId
+      ) {
+        throw new Error(
+          'The budget changed while the backup was being read. Retry the backup.',
+        );
+      }
+      return {
+        format: 'income-tracker-backup',
+        schema_version: 2,
+        created_at: new Date().toISOString(),
+        source_budget: {
+          budget_id: budgetId,
+          name: budget.get('name') as string,
+        },
+        datasets,
+        membership_history: [...membershipsById.values()],
+        currency_settings: preferences.exists()
+          ? {
+              primary_currency: preferences.get(
+                'primary_currency',
+              ) as string,
+              secondary_currencies: preferences.get(
+                'secondary_currencies',
+              ) as string[],
+            }
+          : null,
+        statement_files: [],
+      };
+    },
+
     subscribeMyBudgets(uid, onData, onError) {
       let active = true;
       const unsubscribe = onSnapshot(
@@ -57,6 +333,11 @@ export function createFirestoreDataSource(db: Firestore): BudgetDataSource {
                     name: budget.get('name') as string,
                     membership_id: membership.id,
                     role: membership.get('role') as MyBudgetView['role'],
+                    active_revision_id:
+                      (budget.get('active_revision_id') as
+                        | string
+                        | null
+                        | undefined) ?? null,
                   };
                 } catch {
                   // Access was revoked between the two reads.
@@ -82,9 +363,12 @@ export function createFirestoreDataSource(db: Firestore): BudgetDataSource {
     },
 
     subscribeAccounts(budgetId, ownerMembershipId, onData, onError) {
-      return onSnapshot(
-        query(collection(db, 'accounts'), where('budget_id', '==', budgetId)),
-        (snapshot) => {
+      return subscribeBudgetCollection(
+        db,
+        budgetId,
+        'accounts',
+        (source) => query(source, where('budget_id', '==', budgetId)),
+        (snapshot: QuerySnapshot) => {
           const accounts: AccountView[] = snapshot.docs
             .filter(
               (account) =>
@@ -137,12 +421,12 @@ export function createFirestoreDataSource(db: Firestore): BudgetDataSource {
           );
         }
       };
-      const unsubscribe = onSnapshot(
-        query(
-          collection(db, 'transactions'),
-          where('budget_id', '==', budgetId),
-        ),
-        (snapshot) => {
+      const unsubscribe = subscribeBudgetCollection<QuerySnapshot>(
+        db,
+        budgetId,
+        'transactions',
+        (source) => query(source, where('budget_id', '==', budgetId)),
+        (snapshot, activeRevisionId) => {
           const currentRevision = ++revision;
           const accountIds = [
             ...new Set(
@@ -173,7 +457,17 @@ export function createFirestoreDataSource(db: Firestore): BudgetDataSource {
           void Promise.all([
             Promise.all(
               accountIds.map(async (accountId) => {
-                const account = await getDoc(doc(db, 'accounts', accountId));
+                const account = await getDoc(
+                  doc(
+                    db,
+                    budgetDocumentPath(
+                      budgetId,
+                      activeRevisionId,
+                      'accounts',
+                      accountId,
+                    ),
+                  ),
+                );
                 return [
                   accountId,
                   account.exists() && account.get('budget_id') === budgetId
@@ -187,7 +481,14 @@ export function createFirestoreDataSource(db: Firestore): BudgetDataSource {
             ),
             getDocs(
               query(
-                collection(db, 'categories'),
+                collection(
+                  db,
+                  budgetCollectionPath(
+                    budgetId,
+                    activeRevisionId,
+                    'categories',
+                  ),
+                ),
                 where('budget_id', '==', budgetId),
               ),
             ).then((categorySnapshot) => {
@@ -204,7 +505,17 @@ export function createFirestoreDataSource(db: Firestore): BudgetDataSource {
             }),
             Promise.all(
               importIds.map(async (importId) => {
-                const batch = await getDoc(doc(db, 'import_batches', importId));
+                const batch = await getDoc(
+                  doc(
+                    db,
+                    budgetDocumentPath(
+                      budgetId,
+                      activeRevisionId,
+                      'import_batches',
+                      importId,
+                    ),
+                  ),
+                );
                 return [
                   importId,
                   batch.exists() && batch.get('budget_id') === budgetId
@@ -217,7 +528,14 @@ export function createFirestoreDataSource(db: Firestore): BudgetDataSource {
               snapshot.docs.map(async (transaction) => {
                 const links = await getDocs(
                   query(
-                    collection(db, 'transaction_tags'),
+                    collection(
+                      db,
+                      budgetCollectionPath(
+                        budgetId,
+                        activeRevisionId,
+                        'transaction_tags',
+                      ),
+                    ),
                     where('transaction_id', '==', transaction.id),
                   ),
                 );
@@ -225,7 +543,19 @@ export function createFirestoreDataSource(db: Firestore): BudgetDataSource {
                   (link) => link.get('tag_id') as string,
                 );
                 const tags = await Promise.all(
-                  tagIds.map((tagId) => getDoc(doc(db, 'tags', tagId))),
+                  tagIds.map((tagId) =>
+                    getDoc(
+                      doc(
+                        db,
+                        budgetDocumentPath(
+                          budgetId,
+                          activeRevisionId,
+                          'tags',
+                          tagId,
+                        ),
+                      ),
+                    ),
+                  ),
                 );
                 return [
                   transaction.id,
@@ -241,7 +571,14 @@ export function createFirestoreDataSource(db: Firestore): BudgetDataSource {
             ),
             getDocs(
               query(
-                collection(db, 'split_items'),
+                collection(
+                  db,
+                  budgetCollectionPath(
+                    budgetId,
+                    activeRevisionId,
+                    'split_items',
+                  ),
+                ),
                 where('budget_id', '==', budgetId),
               ),
             ),
@@ -396,8 +733,11 @@ export function createFirestoreDataSource(db: Firestore): BudgetDataSource {
     },
 
     subscribeBudgetAccounts(budgetId, onData, onError) {
-      return onSnapshot(
-        query(collection(db, 'accounts'), where('budget_id', '==', budgetId)),
+      return subscribeBudgetCollection<QuerySnapshot>(
+        db,
+        budgetId,
+        'accounts',
+        (source) => query(source, where('budget_id', '==', budgetId)),
         (snapshot) => {
           const accounts: AccountView[] = snapshot.docs
             .filter((account) => account.get('archived_at') == null)
@@ -419,7 +759,7 @@ export function createFirestoreDataSource(db: Firestore): BudgetDataSource {
       );
     },
 
-    subscribeAccountBalances(accountIds, onData, onError) {
+    subscribeAccountBalances(budgetId, accountIds, onData, onError) {
       if (accountIds.length === 0) {
         onData([]);
         return () => undefined;
@@ -427,11 +767,11 @@ export function createFirestoreDataSource(db: Firestore): BudgetDataSource {
       const byAccount = new Map<string, AccountBalanceView[]>();
       const publish = () => onData([...byAccount.values()].flat());
       const unsubs = accountIds.map((accountId) =>
-        onSnapshot(
-          query(
-            collection(db, 'account_balance_snapshots'),
-            where('account_id', '==', accountId),
-          ),
+        subscribeBudgetCollection<QuerySnapshot>(
+          db,
+          budgetId,
+          'account_balance_snapshots',
+          (source) => query(source, where('account_id', '==', accountId)),
           (snapshot) => {
             byAccount.set(
               accountId,
@@ -453,11 +793,11 @@ export function createFirestoreDataSource(db: Firestore): BudgetDataSource {
     },
 
     subscribeSpendingLimits(budgetId, onData, onError) {
-      return onSnapshot(
-        query(
-          collection(db, 'spending_limits'),
-          where('budget_id', '==', budgetId),
-        ),
+      return subscribeBudgetCollection<QuerySnapshot>(
+        db,
+        budgetId,
+        'spending_limits',
+        (source) => query(source, where('budget_id', '==', budgetId)),
         (snapshot) => {
           onData(
             snapshot.docs.map((limit) => ({
@@ -478,11 +818,11 @@ export function createFirestoreDataSource(db: Firestore): BudgetDataSource {
     },
 
     subscribeTransferGroups(budgetId, onData, onError) {
-      return onSnapshot(
-        query(
-          collection(db, 'transfer_groups'),
-          where('budget_id', '==', budgetId),
-        ),
+      return subscribeBudgetCollection<QuerySnapshot>(
+        db,
+        budgetId,
+        'transfer_groups',
+        (source) => query(source, where('budget_id', '==', budgetId)),
         (snapshot) => {
           onData(
             snapshot.docs.map((group) => ({
@@ -503,8 +843,11 @@ export function createFirestoreDataSource(db: Firestore): BudgetDataSource {
     },
 
     subscribeCategories(budgetId, onData, onError) {
-      return onSnapshot(
-        query(collection(db, 'categories'), where('budget_id', '==', budgetId)),
+      return subscribeBudgetCollection<QuerySnapshot>(
+        db,
+        budgetId,
+        'categories',
+        (source) => query(source, where('budget_id', '==', budgetId)),
         (snapshot) => {
           const categories: CategoryView[] = snapshot.docs
             .map((category) => ({
@@ -536,17 +879,25 @@ export function createFirestoreDataSource(db: Firestore): BudgetDataSource {
     },
 
     subscribeCategorizationRules(budgetId, onData, onError) {
-      return onSnapshot(
-        query(
-          collection(db, 'categorization_rules'),
-          where('budget_id', '==', budgetId),
-        ),
-        (snapshot) => {
+      return subscribeBudgetCollection<QuerySnapshot>(
+        db,
+        budgetId,
+        'categorization_rules',
+        (source) => query(source, where('budget_id', '==', budgetId)),
+        (snapshot, activeRevisionId) => {
           void Promise.all(
             snapshot.docs.map(
               async (rule): Promise<CategorizationRuleView | null> => {
                 const category = await getDoc(
-                  doc(db, 'categories', rule.get('category_id') as string),
+                  doc(
+                    db,
+                    budgetDocumentPath(
+                      budgetId,
+                      activeRevisionId,
+                      'categories',
+                      rule.get('category_id') as string,
+                    ),
+                  ),
                 );
                 if (
                   !category.exists() ||

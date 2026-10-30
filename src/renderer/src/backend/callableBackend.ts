@@ -74,5 +74,10 @@ export function createCallableBackend(functions: Functions): BudgetBackend {
     leaveBudget: (budget_id) => call('leaveBudget', { budget_id }),
     removeMember: (request) => call('removeMember', request),
     deleteMyProfile: () => call('deleteMyProfile'),
+    exportBudgetBackup: (request) => call('exportBudgetBackup', request),
+    beginBudgetRestore: (request) => call('beginBudgetRestore', request),
+    writeBudgetRestoreChunk: (request) =>
+      call('writeBudgetRestoreChunk', request),
+    commitBudgetRestore: (request) => call('commitBudgetRestore', request),
   };
 }

@@ -9,7 +9,11 @@ import type {
 import { findMatchingUserRule } from '../shared/domain/transactions';
 import { isTransactionHidden } from '../shared/domain/transactionFeatures';
 import { DomainError } from '../shared/domain/errors';
-import { COLLECTIONS } from '../shared/firestorePaths';
+import {
+  budgetCollectionPath,
+  budgetDocumentPath,
+  COLLECTIONS,
+} from '../shared/firestorePaths';
 import {
   validateSaveTransactionRequest,
   validateSaveTransactionSplitRequest,
@@ -64,20 +68,37 @@ export async function saveTransaction(
     );
   }
   const transactionId = request.transaction_id ?? deps.newId();
-  const transactionRef = deps.db.doc(
-    `${COLLECTIONS.transactions}/${transactionId}`,
-  );
   const ruleId = request.create_rule ? deps.newId() : null;
-  const ruleRef = ruleId
-    ? deps.db.doc(`${COLLECTIONS.categorizationRules}/${ruleId}`)
-    : null;
-  const accountRef = deps.db.doc(
-    `${COLLECTIONS.accounts}/${request.account_id}`,
-  );
 
   await deps.db.runTransaction(async (tx) => {
     const actor = await readActiveMembership(deps, tx, request.budget_id, uid);
     if (!actor) throw new DomainError('NOT_ACTIVE_MEMBER');
+    const transactionRef = deps.db.doc(
+      budgetDocumentPath(
+        request.budget_id,
+        actor.active_revision_id,
+        COLLECTIONS.transactions,
+        transactionId,
+      ),
+    );
+    const ruleRef = ruleId
+      ? deps.db.doc(
+          budgetDocumentPath(
+            request.budget_id,
+            actor.active_revision_id,
+            COLLECTIONS.categorizationRules,
+            ruleId,
+          ),
+        )
+      : null;
+    const accountRef = deps.db.doc(
+      budgetDocumentPath(
+        request.budget_id,
+        actor.active_revision_id,
+        COLLECTIONS.accounts,
+        request.account_id,
+      ),
+    );
 
     const [account, existing] = await Promise.all([
       tx.get(accountRef),
@@ -104,7 +125,13 @@ export async function saveTransaction(
     const existingSplitItems = existing.exists
       ? await tx.get(
           deps.db
-            .collection(COLLECTIONS.splitItems)
+            .collection(
+              budgetCollectionPath(
+                request.budget_id,
+                actor.active_revision_id,
+                COLLECTIONS.splitItems,
+              ),
+            )
             .where('budget_id', '==', request.budget_id)
             .where('transaction_id', '==', transactionId),
         )
@@ -162,12 +189,24 @@ export async function saveTransaction(
     const [categories, rules, existingTagLinks] = await Promise.all([
       tx.get(
         deps.db
-          .collection(COLLECTIONS.categories)
+          .collection(
+            budgetCollectionPath(
+              request.budget_id,
+              actor.active_revision_id,
+              COLLECTIONS.categories,
+            ),
+          )
           .where('budget_id', '==', request.budget_id),
       ),
       tx.get(
         deps.db
-          .collection(COLLECTIONS.categorizationRules)
+          .collection(
+            budgetCollectionPath(
+              request.budget_id,
+              actor.active_revision_id,
+              COLLECTIONS.categorizationRules,
+            ),
+          )
           .where('budget_id', '==', request.budget_id)
           .where('source', '==', 'USER')
           .where('enabled', '==', true),
@@ -175,7 +214,13 @@ export async function saveTransaction(
       existing.exists
         ? tx.get(
             deps.db
-              .collection(COLLECTIONS.transactionTags)
+              .collection(
+                budgetCollectionPath(
+                  request.budget_id,
+                  actor.active_revision_id,
+                  COLLECTIONS.transactionTags,
+                ),
+              )
               .where('transaction_id', '==', transactionId),
           )
         : Promise.resolve(null),
@@ -257,7 +302,14 @@ export async function saveTransaction(
       id: stableTagId(request.budget_id, name),
     }));
     const desiredTagRefs = desiredTags.map(({ id }) =>
-      deps.db.doc(`${COLLECTIONS.tags}/${id}`),
+      deps.db.doc(
+        budgetDocumentPath(
+          request.budget_id,
+          actor.active_revision_id,
+          COLLECTIONS.tags,
+          id,
+        ),
+      ),
     );
     const desiredTagSnapshots = await Promise.all(
       desiredTagRefs.map((ref) => tx.get(ref)),
@@ -266,7 +318,14 @@ export async function saveTransaction(
     const linkedTagSnapshots = await Promise.all(
       existingLinks.map((link) =>
         tx.get(
-          deps.db.doc(`${COLLECTIONS.tags}/${link.get('tag_id') as string}`),
+          deps.db.doc(
+            budgetDocumentPath(
+              request.budget_id,
+              actor.active_revision_id,
+              COLLECTIONS.tags,
+              link.get('tag_id') as string,
+            ),
+          ),
         ),
       ),
     );
@@ -359,7 +418,12 @@ export async function saveTransaction(
       if (!currentTagIds.has(tag.id)) {
         tx.create(
           deps.db.doc(
-            `${COLLECTIONS.transactionTags}/${transactionTagId(transactionId, tag.id)}`,
+            budgetDocumentPath(
+              request.budget_id,
+              actor.active_revision_id,
+              COLLECTIONS.transactionTags,
+              transactionTagId(transactionId, tag.id),
+            ),
           ),
           { transaction_id: transactionId, tag_id: tag.id },
         );
@@ -380,17 +444,27 @@ export async function saveTransactionSplit(
   if (!request) {
     throw new DomainError('INVALID_ARGUMENT', 'Invalid transaction split.');
   }
-  const transactionRef = deps.db.doc(
-    `${COLLECTIONS.transactions}/${request.transaction_id}`,
-  );
-  const splitQuery = deps.db
-    .collection(COLLECTIONS.splitItems)
-    .where('budget_id', '==', request.budget_id)
-    .where('transaction_id', '==', request.transaction_id);
-
   await deps.db.runTransaction(async (tx) => {
     const actor = await readActiveMembership(deps, tx, request.budget_id, uid);
     if (!actor) throw new DomainError('NOT_ACTIVE_MEMBER');
+    const transactionRef = deps.db.doc(
+      budgetDocumentPath(
+        request.budget_id,
+        actor.active_revision_id,
+        COLLECTIONS.transactions,
+        request.transaction_id,
+      ),
+    );
+    const splitQuery = deps.db
+      .collection(
+        budgetCollectionPath(
+          request.budget_id,
+          actor.active_revision_id,
+          COLLECTIONS.splitItems,
+        ),
+      )
+      .where('budget_id', '==', request.budget_id)
+      .where('transaction_id', '==', request.transaction_id);
     const transaction = await tx.get(transactionRef);
     if (
       !transaction.exists ||
@@ -408,7 +482,13 @@ export async function saveTransactionSplit(
     const existingItems = await tx.get(splitQuery);
     const categories = await tx.get(
       deps.db
-        .collection(COLLECTIONS.categories)
+        .collection(
+          budgetCollectionPath(
+            request.budget_id,
+            actor.active_revision_id,
+            COLLECTIONS.categories,
+          ),
+        )
         .where('budget_id', '==', request.budget_id),
     );
     const categoryById = new Map(
@@ -445,17 +525,27 @@ export async function saveTransactionSplit(
     for (const item of existingItems.docs) tx.delete(item.ref);
     request.items.forEach((item, position) => {
       const splitItemId = deps.newId();
-      tx.create(deps.db.doc(`${COLLECTIONS.splitItems}/${splitItemId}`), {
-        split_item_id: splitItemId,
-        budget_id: request.budget_id,
-        transaction_id: request.transaction_id,
-        category_id: item.category_id,
-        amount: item.amount,
-        expense_frequency: item.expense_frequency,
-        description: item.description,
-        note: item.note,
-        position,
-      });
+      tx.create(
+        deps.db.doc(
+          budgetDocumentPath(
+            request.budget_id,
+            actor.active_revision_id,
+            COLLECTIONS.splitItems,
+            splitItemId,
+          ),
+        ),
+        {
+          split_item_id: splitItemId,
+          budget_id: request.budget_id,
+          transaction_id: request.transaction_id,
+          category_id: item.category_id,
+          amount: item.amount,
+          expense_frequency: item.expense_frequency,
+          description: item.description,
+          note: item.note,
+          position,
+        },
+      );
     });
   });
 }
@@ -474,7 +564,14 @@ export async function deleteTransactionSplit(
     const actor = await readActiveMembership(deps, tx, request.budget_id, uid);
     if (!actor) throw new DomainError('NOT_ACTIVE_MEMBER');
     const transaction = await tx.get(
-      deps.db.doc(`${COLLECTIONS.transactions}/${request.transaction_id}`),
+      deps.db.doc(
+        budgetDocumentPath(
+          request.budget_id,
+          actor.active_revision_id,
+          COLLECTIONS.transactions,
+          request.transaction_id,
+        ),
+      ),
     );
     if (
       !transaction.exists ||
@@ -485,7 +582,13 @@ export async function deleteTransactionSplit(
     assertHiddenTransactionAuthor(transaction, actor.membership_id, deps.now());
     const items = await tx.get(
       deps.db
-        .collection(COLLECTIONS.splitItems)
+        .collection(
+          budgetCollectionPath(
+            request.budget_id,
+            actor.active_revision_id,
+            COLLECTIONS.splitItems,
+          ),
+        )
         .where('budget_id', '==', request.budget_id)
         .where('transaction_id', '==', request.transaction_id),
     );
@@ -520,7 +623,12 @@ export async function setTransactionHidden(
     const actor = await readActiveMembership(deps, tx, request.budget_id, uid);
     if (!actor) throw new DomainError('NOT_ACTIVE_MEMBER');
     const transactionRef = deps.db.doc(
-      `${COLLECTIONS.transactions}/${request.transaction_id}`,
+      budgetDocumentPath(
+        request.budget_id,
+        actor.active_revision_id,
+        COLLECTIONS.transactions,
+        request.transaction_id,
+      ),
     );
     const transaction = await tx.get(transactionRef);
     if (

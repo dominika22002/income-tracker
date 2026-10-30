@@ -1,4 +1,4 @@
-import { COLLECTIONS } from '../shared/firestorePaths';
+import { budgetDocumentPath, COLLECTIONS } from '../shared/firestorePaths';
 import { DomainError } from '../shared/domain/errors';
 import { validateSaveSpendingLimitRequest } from '../shared/validators';
 import { readActiveMembership } from './access';
@@ -20,15 +20,30 @@ export async function saveSpendingLimit(
   const id = stableDocumentId(
     `spending-limit\0${request.budget_id}\0${request.limit_scope}\0${categoryId ?? ''}\0${request.period}`,
   );
-  const limitRef = deps.db.doc(`${COLLECTIONS.spendingLimits}/${id}`);
-
   await deps.db.runTransaction(async (tx) => {
     const actor = await readActiveMembership(deps, tx, request.budget_id, uid);
     if (!actor) throw new DomainError('NOT_ACTIVE_MEMBER');
+    const limitRef = deps.db.doc(
+      budgetDocumentPath(
+        request.budget_id,
+        actor.active_revision_id,
+        COLLECTIONS.spendingLimits,
+        id,
+      ),
+    );
     const [existing, category] = await Promise.all([
       tx.get(limitRef),
       categoryId
-        ? tx.get(deps.db.doc(`${COLLECTIONS.categories}/${categoryId}`))
+        ? tx.get(
+            deps.db.doc(
+              budgetDocumentPath(
+                request.budget_id,
+                actor.active_revision_id,
+                COLLECTIONS.categories,
+                categoryId,
+              ),
+            ),
+          )
         : Promise.resolve(null),
     ]);
     if (

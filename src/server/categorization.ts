@@ -2,7 +2,7 @@ import type {
   SaveCategorizationRuleRequest,
   SaveCategorizationRuleResult,
 } from '../shared/contracts';
-import { COLLECTIONS } from '../shared/firestorePaths';
+import { budgetDocumentPath, COLLECTIONS } from '../shared/firestorePaths';
 import { DomainError } from '../shared/domain/errors';
 import { validateSaveCategorizationRuleRequest } from '../shared/validators';
 import { readActiveMembership } from './access';
@@ -23,19 +23,39 @@ export async function saveCategorizationRule(
     );
   }
   const ruleId = request.rule_id ?? deps.newId();
-  const ruleRef = deps.db.doc(`${COLLECTIONS.categorizationRules}/${ruleId}`);
-  const categoryRef = deps.db.doc(
-    `${COLLECTIONS.categories}/${request.category_id}`,
-  );
-
   await deps.db.runTransaction(async (tx) => {
     const actor = await readActiveMembership(deps, tx, request.budget_id, uid);
     if (!actor) throw new DomainError('NOT_ACTIVE_MEMBER');
+    const ruleRef = deps.db.doc(
+      budgetDocumentPath(
+        request.budget_id,
+        actor.active_revision_id,
+        COLLECTIONS.categorizationRules,
+        ruleId,
+      ),
+    );
+    const categoryRef = deps.db.doc(
+      budgetDocumentPath(
+        request.budget_id,
+        actor.active_revision_id,
+        COLLECTIONS.categories,
+        request.category_id,
+      ),
+    );
     const [category, existing, account] = await Promise.all([
       tx.get(categoryRef),
       tx.get(ruleRef),
       request.match_field === 'ACCOUNT'
-        ? tx.get(deps.db.doc(`${COLLECTIONS.accounts}/${request.match_value}`))
+        ? tx.get(
+            deps.db.doc(
+              budgetDocumentPath(
+                request.budget_id,
+                actor.active_revision_id,
+                COLLECTIONS.accounts,
+                request.match_value,
+              ),
+            ),
+          )
         : Promise.resolve(null),
     ]);
     if (

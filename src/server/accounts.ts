@@ -1,5 +1,5 @@
 import type { CreateAccountResult, MembershipRecord } from '../shared/contracts';
-import { COLLECTIONS } from '../shared/firestorePaths';
+import { budgetDocumentPath, COLLECTIONS } from '../shared/firestorePaths';
 import { DomainError } from '../shared/domain/errors';
 import { validateCreateAccountRequest } from '../shared/validators';
 import { readActiveMembership } from './access';
@@ -36,13 +36,20 @@ export async function createAccount(
   }
 
   const accountId = validated.account_id ?? deps.newId();
-  const accountRef = deps.db.doc(`${COLLECTIONS.accounts}/${accountId}`);
 
   return deps.db.runTransaction(async (tx) => {
     const actor = await readActiveMembership(deps, tx, validated.budget_id, uid);
     if (!actor) {
       throw new DomainError('NOT_ACTIVE_MEMBER');
     }
+    const accountRef = deps.db.doc(
+      budgetDocumentPath(
+        validated.budget_id,
+        actor.active_revision_id,
+        COLLECTIONS.accounts,
+        accountId,
+      ),
+    );
 
     const ownerMembershipId = validated.owner_membership_id ?? actor.membership_id;
     const ownerSnap = await tx.get(

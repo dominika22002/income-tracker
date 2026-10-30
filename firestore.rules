@@ -16,6 +16,11 @@ service cloud.firestore {
       return signedIn() && exists(activeMemberPath(budgetId));
     }
 
+    function isActiveRevision(budgetId, revisionId) {
+      return isActiveMember(budgetId)
+        && get(/databases/$(database)/documents/budgets/$(budgetId)).data.get('active_revision_id', null) == revisionId;
+    }
+
     function isActiveAdmin(budgetId) {
       return isActiveMember(budgetId)
         && get(activeMemberPath(budgetId)).data.role == 'ADMIN';
@@ -47,6 +52,11 @@ service cloud.firestore {
         allow read: if isActiveMember(budgetId);
         allow write: if false;
       }
+
+      match /revisions/{revisionId}/{document=**} {
+        allow read: if isActiveRevision(budgetId, revisionId);
+        allow write: if false;
+      }
     }
 
     match /memberships/{membershipId} {
@@ -67,6 +77,11 @@ service cloud.firestore {
     }
 
     match /import_periods/{importPeriodId} {
+      allow read: if isActiveMember(resource.data.budget_id);
+      allow write: if false;
+    }
+
+    match /import_profiles/{importProfileId} {
       allow read: if isActiveMember(resource.data.budget_id);
       allow write: if false;
     }
@@ -106,6 +121,18 @@ service cloud.firestore {
         && resource != null
         && exists(/databases/$(database)/documents/transactions/$(resource.data.transaction_id))
         && isActiveMember(get(/databases/$(database)/documents/transactions/$(resource.data.transaction_id)).data.budget_id);
+      allow write: if false;
+    }
+
+    match /transaction_conversions/{conversionId} {
+      allow read: if signedIn()
+        && exists(/databases/$(database)/documents/transactions/$(resource.data.transaction_id))
+        && isActiveMember(get(/databases/$(database)/documents/transactions/$(resource.data.transaction_id)).data.budget_id);
+      allow write: if false;
+    }
+
+    match /exchange_rates/{exchangeRateId} {
+      allow read: if signedIn();
       allow write: if false;
     }
 

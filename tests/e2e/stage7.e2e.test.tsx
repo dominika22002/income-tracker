@@ -200,6 +200,17 @@ describe('Stage 7 export flows (E-FR-55–E-FR-63)', () => {
       saveReportPdf,
       selectLocalFile: async () => ({ canceled: true }),
       readLocalStatement: async () => ({ success: false }),
+      saveBackupFile: async () => ({ status: 'canceled' }),
+      selectBackupFile: async () => ({ status: 'canceled' }),
+      archiveImportedStatement: async () => ({ status: 'saved', filePath: '' }),
+      listLocalStatementFiles: async () => ({
+        status: 'loaded',
+        files: [],
+      }),
+      restoreLocalStatementFiles: async () => ({
+        status: 'saved',
+        count: 0,
+      }),
       writeTestFile: async () => ({ success: false }),
       startGoogleOAuth: async () => ({ launched: false }),
       onOAuthCallback: () => () => undefined,

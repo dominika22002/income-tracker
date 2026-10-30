@@ -15,6 +15,7 @@ import { TransactionsWorkspace } from './TransactionsWorkspace';
 import { HiddenTransactionsNotice } from './HiddenTransactionsNotice';
 import { transactionsVisibleToMember } from '../../../../shared/domain/transactionFeatures';
 import { ReportsWorkspace } from './ReportsWorkspace';
+import { BackupWorkspace } from './BackupWorkspace';
 
 export type AppView =
   'overview' | 'transactions' | 'reports' | 'budgets' | 'imports' | 'settings';
@@ -359,8 +360,8 @@ function LegacyBudgetView({
               <p>
                 This permanently deletes your profile and ends all your
                 memberships. Transactions you added stay in the budgets. Backup
-                files saved on your computer are not deleted — remove them
-                yourself.
+                files are outside the app's control and are not deleted —
+                remove them separately.
               </p>
               <button
                 type="button"
@@ -417,7 +418,7 @@ function RoutedBudgetView({
     reports: 'Podsumowania, limity i oszczędności w wybranym budżecie.',
     budgets: 'Zarządzaj budżetami, członkostwem i zaproszeniami.',
     imports: 'Wczytaj wyciąg lokalnie i sprawdź dane przed zatwierdzeniem.',
-    settings: 'Dostosuj preferencje konta i waluty.',
+    settings: 'Zarządzaj walutami, kopiami zapasowymi i profilem.',
   }[view];
 
   return (
@@ -605,6 +606,12 @@ function RoutedBudgetView({
               onSave={onSavePreferences}
             />
           </section>
+          <BackupWorkspace
+            services={services}
+            budgets={budgets}
+            selectedBudgetId={selected?.budget_id}
+            userId={session.uid}
+          />
           <section className="dashboard-card danger-panel">
             <p className="eyebrow">STREFA RYZYKOWNA</p>
             <h2>Usuwanie profilu</h2>
@@ -625,8 +632,8 @@ function RoutedBudgetView({
             ) : (
               <>
                 <p>
-                  Ta operacja jest trwała. Kopie zapasowe zapisane na tym
-                  komputerze nie zostaną usunięte.
+                  Ta operacja jest trwała. Lokalne kopie zapasowe są poza
+                  kontrolą aplikacji i nie zostaną usunięte — usuń je osobno.
                 </p>
                 <div className="actions">
                   <button

@@ -1,3 +1,5 @@
+import type { BackupPayload, BackupRecord } from './domain/backup';
+
 export interface IpcApi {
   ping(): Promise<{ ok: true; message: string }>;
   saveExportFile(request: SaveExportFileRequest): Promise<ExportFileResult>;
@@ -10,6 +12,17 @@ export interface IpcApi {
   readLocalStatement(
     request: ReadLocalStatementRequest,
   ): Promise<ReadLocalStatementResult>;
+  saveBackupFile(request: SaveBackupFileRequest): Promise<ExportFileResult>;
+  selectBackupFile(): Promise<SelectBackupFileResult>;
+  archiveImportedStatement(
+    request: ArchiveImportedStatementRequest,
+  ): Promise<LocalStatementFileResult>;
+  listLocalStatementFiles(
+    budgetId: string,
+  ): Promise<ListLocalStatementFilesResult>;
+  restoreLocalStatementFiles(
+    request: RestoreLocalStatementFilesRequest,
+  ): Promise<RestoreLocalStatementFilesResult>;
   writeTestFile(content: string): Promise<{
     success: boolean;
     filePath?: string;
@@ -77,6 +90,48 @@ export interface ReadLocalStatementResult {
   error?: string;
 }
 
+export interface SaveBackupFileRequest {
+  fileName: string;
+  content: string;
+}
+
+export type SelectBackupFileResult =
+  | { status: 'selected'; content: string; fileName: string }
+  | { status: 'canceled' }
+  | { status: 'error'; error: string };
+
+export interface ArchiveImportedStatementRequest {
+  filePath: string;
+  fileSha256: string;
+  budgetId: string;
+  importBatchId: string;
+}
+
+export interface BackupStatementFileRecord {
+  import_batch_id: string;
+  file_name: string;
+  content_type: 'text/csv' | 'application/pdf';
+  sha256: string;
+  content_base64: string;
+}
+
+export type LocalStatementFileResult =
+  | { status: 'saved'; filePath: string }
+  | { status: 'error'; error: string };
+
+export type ListLocalStatementFilesResult =
+  | { status: 'loaded'; files: BackupStatementFileRecord[] }
+  | { status: 'error'; error: string };
+
+export type RestoreLocalStatementFilesResult =
+  | { status: 'saved'; count: number }
+  | { status: 'error'; error: string };
+
+export interface RestoreLocalStatementFilesRequest {
+  budgetId: string;
+  files: BackupStatementFileRecord[];
+}
+
 // ---------------------------------------------------------------------------
 // Stage 1: budget access model (see docs/etap-1-mapowanie.md)
 // ---------------------------------------------------------------------------
@@ -105,6 +160,7 @@ export interface BudgetRecord {
   name: string;
   created_at: Date;
   created_by_user_id: string | null;
+  active_revision_id?: string | null;
 }
 
 export interface MembershipRecord {
@@ -552,6 +608,10 @@ export interface BudgetBackend {
   leaveBudget(budgetId: string): Promise<LeaveBudgetResult>;
   removeMember(request: RemoveMemberRequest): Promise<void>;
   deleteMyProfile(): Promise<DeleteProfileResult>;
+  exportBudgetBackup(request: ExportBudgetBackupRequest): Promise<BackupPayload>;
+  beginBudgetRestore(request: BeginBudgetRestoreRequest): Promise<BeginBudgetRestoreResult>;
+  writeBudgetRestoreChunk(request: WriteBudgetRestoreChunkRequest): Promise<void>;
+  commitBudgetRestore(request: CommitBudgetRestoreRequest): Promise<void>;
 }
 
 export interface MyBudgetView {
@@ -559,6 +619,42 @@ export interface MyBudgetView {
   name: string;
   membership_id: string;
   role: MembershipRole;
+  active_revision_id?: string | null;
+}
+
+export interface ExportBudgetBackupRequest {
+  budget_id: string;
+}
+
+export interface BeginBudgetRestoreRequest {
+  budget_id: string;
+  expected_revision_id: string | null;
+  document_counts: Record<string, number>;
+  source_memberships: BackupRecord[];
+  currency_settings: BackupPayload['currency_settings'];
+  apply_currency_settings: boolean;
+}
+
+export interface BeginBudgetRestoreResult {
+  restore_id: string;
+  revision_id: string;
+  membership_mapping: Record<string, string>;
+}
+
+export interface RestoreDocument {
+  collection: string;
+  document_id: string;
+  data: Record<string, unknown>;
+}
+
+export interface WriteBudgetRestoreChunkRequest {
+  restore_id: string;
+  chunk_id: string;
+  documents: RestoreDocument[];
+}
+
+export interface CommitBudgetRestoreRequest {
+  restore_id: string;
 }
 
 export interface MemberView {

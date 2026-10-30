@@ -212,11 +212,12 @@ export function ReportsWorkspace({
   useEffect(
     () =>
       services.data.subscribeAccountBalances(
+        budgetId,
         accountIds,
         setBalances,
         (failure) => setDataError(describeError(failure)),
       ),
-    [accountIds, services.data],
+    [accountIds, budgetId, services.data],
   );
 
   const transactions =

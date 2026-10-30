@@ -2,7 +2,11 @@ import type {
   ArchiveCategoryRequest,
   SaveCategoryResult,
 } from '../shared/contracts';
-import { COLLECTIONS } from '../shared/firestorePaths';
+import {
+  budgetCollectionPath,
+  budgetDocumentPath,
+  COLLECTIONS,
+} from '../shared/firestorePaths';
 import { DomainError } from '../shared/domain/errors';
 import {
   validateArchiveCategoryRequest,
@@ -23,7 +27,6 @@ export async function saveCategory(
     throw new DomainError('INVALID_ARGUMENT', 'Invalid category request.');
   }
   const categoryId = request.category_id ?? deps.newId();
-  const categoryRef = deps.db.doc(`${COLLECTIONS.categories}/${categoryId}`);
   const parentId = request.category_id
     ? undefined
     : (request.parent_category_id ?? null);
@@ -31,12 +34,26 @@ export async function saveCategory(
   return deps.db.runTransaction(async (tx) => {
     const actor = await readActiveMembership(deps, tx, request.budget_id, uid);
     if (!actor) throw new DomainError('NOT_ACTIVE_MEMBER');
+    const categoryRef = deps.db.doc(
+      budgetDocumentPath(
+        request.budget_id,
+        actor.active_revision_id,
+        COLLECTIONS.categories,
+        categoryId,
+      ),
+    );
 
     const [existing, categories] = await Promise.all([
       tx.get(categoryRef),
       tx.get(
         deps.db
-          .collection(COLLECTIONS.categories)
+          .collection(
+            budgetCollectionPath(
+              request.budget_id,
+              actor.active_revision_id,
+              COLLECTIONS.categories,
+            ),
+          )
           .where('budget_id', '==', request.budget_id),
       ),
     ]);
@@ -134,17 +151,27 @@ export async function archiveCategory(
   if (!request) {
     throw new DomainError('INVALID_ARGUMENT', 'Invalid category request.');
   }
-  const categoryRef = deps.db.doc(
-    `${COLLECTIONS.categories}/${request.category_id}`,
-  );
-  const rulesQuery = deps.db
-    .collection(COLLECTIONS.categorizationRules)
-    .where('budget_id', '==', request.budget_id)
-    .where('category_id', '==', request.category_id);
-
   await deps.db.runTransaction(async (tx) => {
     const actor = await readActiveMembership(deps, tx, request.budget_id, uid);
     if (!actor) throw new DomainError('NOT_ACTIVE_MEMBER');
+    const categoryRef = deps.db.doc(
+      budgetDocumentPath(
+        request.budget_id,
+        actor.active_revision_id,
+        COLLECTIONS.categories,
+        request.category_id,
+      ),
+    );
+    const rulesQuery = deps.db
+      .collection(
+        budgetCollectionPath(
+          request.budget_id,
+          actor.active_revision_id,
+          COLLECTIONS.categorizationRules,
+        ),
+      )
+      .where('budget_id', '==', request.budget_id)
+      .where('category_id', '==', request.category_id);
     const [category, rules] = await Promise.all([
       tx.get(categoryRef),
       tx.get(rulesQuery),

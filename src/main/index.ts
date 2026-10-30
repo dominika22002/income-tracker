@@ -1,5 +1,6 @@
 import { app, BrowserWindow } from 'electron';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   getIpcChannels,
   handleOAuthCallback,
@@ -8,6 +9,7 @@ import {
 
 let mainWindow: BrowserWindow | null = null;
 
+const __dirname = dirname(fileURLToPath(import.meta.url));
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
 const protocolName = 'income-tracker';
 

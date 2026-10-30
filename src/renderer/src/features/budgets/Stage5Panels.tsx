@@ -37,6 +37,7 @@ export function AccountBalancesPanel({
   useEffect(() => {
     if (!accounts.length) return undefined;
     return services.data.subscribeAccountBalances(
+      accounts[0]!.budget_id,
       accounts.map((account) => account.account_id),
       setBalances,
       (failure) =>

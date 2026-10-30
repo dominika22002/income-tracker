@@ -22,6 +22,29 @@ async function deleteAll(
   await Promise.all(results);
 }
 
+async function documentsByReferencedIds(
+  deps: ServerDeps,
+  collectionName: string,
+  field: string,
+  ids: string[],
+): Promise<DocumentReference[]> {
+  const snapshots = await Promise.all(
+    Array.from({ length: Math.ceil(ids.length / 30) }, (_, index) =>
+      deps.db
+        .collection(collectionName)
+        .where(
+          field,
+          'in',
+          ids.slice(index * 30, (index + 1) * 30),
+        )
+        .get(),
+    ),
+  );
+  return snapshots.flatMap((snapshot) =>
+    snapshot.docs.map((document) => document.ref),
+  );
+}
+
 /**
  * Second phase of budget deletion. The budget document and its access index
  * are removed atomically in the transaction that ended the last membership, so
@@ -41,25 +64,58 @@ export async function purgeBudgetData(
     throw new DomainError('BUDGET_HAS_ACTIVE_MEMBERS');
   }
 
-  const [invitations, memberships, splitItems, spendingLimits] =
-    await Promise.all([
-      deps.db
-        .collection(COLLECTIONS.invitations)
-        .where('budget_id', '==', budgetId)
-        .get(),
-      deps.db
-        .collection(COLLECTIONS.memberships)
-        .where('budget_id', '==', budgetId)
-        .get(),
-      deps.db
-        .collection(COLLECTIONS.splitItems)
-        .where('budget_id', '==', budgetId)
-        .get(),
-      deps.db
-        .collection(COLLECTIONS.spendingLimits)
-        .where('budget_id', '==', budgetId)
-        .get(),
-    ]);
+  const budgetScopedCollections = [
+    COLLECTIONS.invitations,
+    COLLECTIONS.memberships,
+    COLLECTIONS.accounts,
+    COLLECTIONS.importBatches,
+    COLLECTIONS.importProfiles,
+    COLLECTIONS.importPeriods,
+    COLLECTIONS.categories,
+    COLLECTIONS.categorizationRules,
+    COLLECTIONS.transferGroups,
+    COLLECTIONS.transactions,
+    COLLECTIONS.splitItems,
+    COLLECTIONS.spendingLimits,
+    COLLECTIONS.accountBalanceSnapshots,
+    COLLECTIONS.tags,
+  ];
+  const budgetCollections = new Map(
+    await Promise.all(
+    budgetScopedCollections.map((collectionName) =>
+        deps.db
+          .collection(collectionName)
+          .where('budget_id', '==', budgetId)
+          .get()
+          .then((snapshot) => [collectionName, snapshot] as const),
+    ),
+    ),
+  );
+  const invitations = budgetCollections.get(COLLECTIONS.invitations)!;
+  const transactions = budgetCollections.get(COLLECTIONS.transactions)!;
+  const imports = budgetCollections.get(COLLECTIONS.importBatches)!;
+  const transactionIds = transactions.docs.map((document) => document.id);
+  const importIds = imports.docs.map((document) => document.id);
+  const [transactionTags, conversions, importHashes] = await Promise.all([
+    documentsByReferencedIds(
+      deps,
+      COLLECTIONS.transactionTags,
+      'transaction_id',
+      transactionIds,
+    ),
+    documentsByReferencedIds(
+      deps,
+      COLLECTIONS.transactionConversions,
+      'transaction_id',
+      transactionIds,
+    ),
+    documentsByReferencedIds(
+      deps,
+      COLLECTIONS.importBatchFileHashes,
+      'import_batch_id',
+      importIds,
+    ),
+  ]);
 
   await deleteAll(deps, [
     ...invitations.docs.map((doc) =>
@@ -67,10 +123,12 @@ export async function purgeBudgetData(
         `${COLLECTIONS.invitationTokens}/${doc.get('token_hash') as string}`,
       ),
     ),
-    ...invitations.docs.map((doc) => doc.ref),
-    ...memberships.docs.map((doc) => doc.ref),
-    ...splitItems.docs.map((doc) => doc.ref),
-    ...spendingLimits.docs.map((doc) => doc.ref),
+    ...[...budgetCollections.values()].flatMap((snapshot) =>
+      snapshot.docs.map((document) => document.ref),
+    ),
+    ...transactionTags,
+    ...conversions,
+    ...importHashes,
   ]);
 
   await deps.db.recursiveDelete(

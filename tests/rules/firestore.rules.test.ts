@@ -245,6 +245,57 @@ describe('Firestore rules: budget access', () => {
       }
     });
 
+    it('allows active-revision reads only and denies client writes to revision data', async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        const admin = context.firestore();
+        await updateDoc(doc(admin, 'budgets/budget-a'), {
+          active_revision_id: 'revision-active',
+        });
+        await setDoc(
+          doc(
+            admin,
+            'budgets/budget-a/revisions/revision-active/categories/category-active',
+          ),
+          { budget_id: 'budget-a', name: 'Active category' },
+        );
+        await setDoc(
+          doc(
+            admin,
+            'budgets/budget-a/revisions/revision-old/categories/category-old',
+          ),
+          { budget_id: 'budget-a', name: 'Old category' },
+        );
+      });
+
+      const memberDb = asUser('member-1');
+      const activePath =
+        'budgets/budget-a/revisions/revision-active/categories';
+      const inactivePath =
+        'budgets/budget-a/revisions/revision-old/categories';
+      await assertSucceeds(
+        getDocs(
+          query(
+            collection(memberDb, activePath),
+            where('budget_id', '==', 'budget-a'),
+          ),
+        ),
+      );
+      await assertFails(
+        getDocs(
+          query(
+            collection(memberDb, inactivePath),
+            where('budget_id', '==', 'budget-a'),
+          ),
+        ),
+      );
+      await assertFails(
+        setDoc(doc(memberDb, `${activePath}/client-write`), {
+          budget_id: 'budget-a',
+          name: 'Forged category',
+        }),
+      );
+    });
+
     it('allows querying an empty tag list for an accessible transaction', async () => {
       await assertSucceeds(
         getDocs(

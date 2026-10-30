@@ -3,9 +3,12 @@ import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { basename, extname, join } from 'node:path';
 import type {
+  ArchiveImportedStatementRequest,
+  BackupStatementFileRecord,
   OAuthCallbackPayload,
   ReadLocalStatementResult,
 } from '../shared/contracts';
+import { BACKUP_MAX_BYTES, parseBackupFile } from '../shared/domain/backup';
 import {
   buildGoogleOAuthUrl,
   createOAuthState,
@@ -26,6 +29,11 @@ import {
   validateReadLocalStatementRequest,
   validateWriteTestFileRequest,
 } from '../shared/validators';
+import {
+  archiveLocalStatement,
+  listLocalStatements,
+  restoreLocalStatements,
+} from './localStatementFiles';
 
 const IPC_CHANNELS = {
   ping: 'app:ping',
@@ -34,6 +42,11 @@ const IPC_CHANNELS = {
   writeTestFile: 'file:writeTest',
   saveExportFile: 'export:saveFile',
   saveReportPdf: 'export:saveReportPdf',
+  saveBackupFile: 'backup:saveFile',
+  selectBackupFile: 'backup:selectFile',
+  archiveStatement: 'file:archiveStatement',
+  listStatements: 'file:listStatements',
+  restoreStatements: 'file:restoreStatements',
   startOAuth: 'oauth:start',
   oauthCallback: 'oauth:callback',
 } as const;
@@ -169,7 +182,6 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
             'Select the statement through the file picker before reading it.',
         };
       }
-      selectedStatementPath = null;
       try {
         const maxBytes = request.maxBytes ?? MAX_LOCAL_STATEMENT_BYTES;
         const extension = extname(request.filePath).slice(1).toLowerCase();
@@ -220,6 +232,183 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
             error instanceof Error
               ? `Could not read local file: ${error.message}`
               : 'Could not read local file due to an unknown error.',
+        };
+      }
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.saveBackupFile,
+    async (_event, payload: unknown) => {
+      if (
+        !payload ||
+        typeof payload !== 'object' ||
+        typeof (payload as Record<string, unknown>).fileName !== 'string' ||
+        typeof (payload as Record<string, unknown>).content !== 'string'
+      ) {
+        return { status: 'error', error: 'Nieprawidłowy plik kopii zapasowej.' };
+      }
+      const request = payload as { fileName: string; content: string };
+      const fileName = exportFileName(request.fileName, 'json');
+      const content = Buffer.from(request.content, 'utf8');
+      if (
+        !fileName ||
+        content.length === 0 ||
+        content.length > BACKUP_MAX_BYTES
+      ) {
+        return {
+          status: 'error',
+          error: 'Kopia ma nieprawidłową nazwę albo przekracza limit 100 MB.',
+        };
+      }
+      try {
+        await parseBackupFile(request.content);
+        const selected = await dialog.showSaveDialog(mainWindow, {
+          title: 'Zapisz nieszyfrowaną kopię zapasową',
+          buttonLabel: 'Zapisz kopię',
+          defaultPath: fileName,
+          filters: [{ name: 'Income Tracker backup', extensions: ['json'] }],
+        });
+        if (selected.canceled || !selected.filePath) {
+          return { status: 'canceled' };
+        }
+        const filePath = ensureExportExtension(selected.filePath, 'json');
+        await writeExportAtomically(filePath, content);
+        return { status: 'saved', filePath };
+      } catch (error) {
+        return { status: 'error', error: describeExportError(error) };
+      }
+    },
+  );
+
+  ipcMain.handle(IPC_CHANNELS.selectBackupFile, async () => {
+    try {
+      const selected = await dialog.showOpenDialog(mainWindow, {
+        title: 'Wybierz kopię zapasową',
+        properties: ['openFile'],
+        filters: [{ name: 'Income Tracker backup', extensions: ['json'] }],
+      });
+      if (selected.canceled) return { status: 'canceled' };
+      const [filePath] = selected.filePaths;
+      if (!filePath) {
+        return { status: 'error', error: 'Nie wybrano pliku kopii.' };
+      }
+      const info = await stat(filePath);
+      if (!info.isFile() || info.size === 0 || info.size > BACKUP_MAX_BYTES) {
+        return {
+          status: 'error',
+          error: 'Wybrany plik jest pusty albo przekracza limit 100 MB.',
+        };
+      }
+      const content = await readFile(filePath, 'utf8');
+      await parseBackupFile(content);
+      return {
+        status: 'selected',
+        content,
+        fileName: basename(filePath),
+      };
+    } catch (error) {
+      return { status: 'error', error: describeExportError(error) };
+    }
+  });
+
+  ipcMain.handle(
+    IPC_CHANNELS.archiveStatement,
+    async (_event, payload: unknown) => {
+      const request = payload as ArchiveImportedStatementRequest;
+      if (
+        !payload ||
+        typeof payload !== 'object' ||
+        !request ||
+        typeof request.filePath !== 'string' ||
+        typeof request.fileSha256 !== 'string' ||
+        typeof request.budgetId !== 'string' ||
+        typeof request.importBatchId !== 'string' ||
+        request.filePath !== selectedStatementPath
+      ) {
+        return {
+          status: 'error',
+          error: 'Wybierz plik wyciągu w aplikacji przed jego zachowaniem.',
+        };
+      }
+      try {
+        const filePath = await archiveLocalStatement(
+          app.getPath('userData'),
+          request.budgetId,
+          request.importBatchId,
+          request.filePath,
+          request.fileSha256,
+        );
+        selectedStatementPath = null;
+        return { status: 'saved', filePath };
+      } catch (error) {
+        return {
+          status: 'error',
+          error:
+            error instanceof Error
+              ? `Nie udało się zachować wyciągu lokalnie: ${error.message}`
+              : 'Nie udało się zachować wyciągu lokalnie.',
+        };
+      }
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.listStatements,
+    async (_event, payload: unknown) => {
+      const budgetId =
+        payload && typeof payload === 'object'
+          ? (payload as Record<string, unknown>).budgetId
+          : undefined;
+      if (typeof budgetId !== 'string') {
+        return { status: 'error', error: 'Nieprawidłowy identyfikator budżetu.' };
+      }
+      try {
+        return {
+          status: 'loaded',
+          files: await listLocalStatements(app.getPath('userData'), budgetId),
+        };
+      } catch (error) {
+        return {
+          status: 'error',
+          error:
+            error instanceof Error
+              ? `Nie udało się odczytać lokalnych wyciągów: ${error.message}`
+              : 'Nie udało się odczytać lokalnych wyciągów.',
+        };
+      }
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.restoreStatements,
+    async (_event, payload: unknown) => {
+      if (
+        !payload ||
+        typeof payload !== 'object' ||
+        typeof (payload as Record<string, unknown>).budgetId !== 'string' ||
+        !Array.isArray((payload as Record<string, unknown>).files)
+      ) {
+        return { status: 'error', error: 'Nieprawidłowe dane plików kopii.' };
+      }
+      const request = payload as {
+        budgetId: string;
+        files: BackupStatementFileRecord[];
+      };
+      try {
+        const count = await restoreLocalStatements(
+          app.getPath('userData'),
+          request.budgetId,
+          request.files,
+        );
+        return { status: 'saved', count };
+      } catch (error) {
+        return {
+          status: 'error',
+          error:
+            error instanceof Error
+              ? `Nie udało się odtworzyć lokalnych wyciągów: ${error.message}`
+              : 'Nie udało się odtworzyć lokalnych wyciągów.',
         };
       }
     },

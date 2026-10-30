@@ -217,6 +217,7 @@ export function StatementCsvPreview({
   onImportSuccess?: (budgetId: string) => void;
 }) {
   const [fileName, setFileName] = useState<string | null>(null);
+  const [filePath, setFilePath] = useState<string | null>(null);
   const [bytes, setBytes] = useState<Uint8Array | null>(null);
   const [fileSha256, setFileSha256] = useState<string | null>(null);
   const [preview, setPreview] = useState<Preview | null>(null);
@@ -325,6 +326,7 @@ export function StatementCsvPreview({
         throw new Error(selected.error ?? 'Nie wybrano pliku.');
       }
       setBytes(null);
+      setFilePath(null);
       setPreview(null);
       setRows([]);
       setFileSha256(null);
@@ -338,6 +340,7 @@ export function StatementCsvPreview({
       setFileName(
         readResult.fileName ?? selected.filePath.split(/[\\/]/).pop() ?? 'plik',
       );
+      setFilePath(selected.filePath);
       if (readResult.extension?.toLowerCase() !== 'csv') {
         setBytes(null);
         setPreview(null);
@@ -532,12 +535,33 @@ export function StatementCsvPreview({
     setMessage(null);
     try {
       const result = await services.backend.commitCsvImport(request);
+      let fileSaved = false;
+      if (filePath && fileSha256) {
+        const archive = await window.electronApi.archiveImportedStatement({
+          filePath,
+          fileSha256,
+          budgetId: selectedBudget.budget_id,
+          importBatchId: result.import_batch_id,
+        });
+        if (archive.status === 'error') {
+          setMessage({
+            type: 'error',
+            text: `Import został zapisany, ale oryginalnego wyciągu nie udało się zachować lokalnie: ${archive.error}`,
+          });
+          onImportSuccess?.(selectedBudget.budget_id);
+          return;
+        }
+        fileSaved = true;
+        setFilePath(null);
+      }
       onImportSuccess?.(selectedBudget.budget_id);
       setMessage({
         type: 'info',
         text: result.already_imported
-          ? 'Ten plik został już wcześniej zaimportowany dla wybranego konta.'
-          : `Import zatwierdzono: ${result.imported_row_count} transakcji; pominięte wiersze: ${result.skipped_duplicate_row_numbers.join(', ') || 'brak'}.`,
+          ? fileSaved
+            ? 'Ten plik został już zaimportowany; jego oryginał zachowano lokalnie.'
+            : 'Ten plik został już wcześniej zaimportowany dla wybranego konta.'
+          : `Import zatwierdzono: ${result.imported_row_count} transakcji; pominięte wiersze: ${result.skipped_duplicate_row_numbers.join(', ') || 'brak'}.${fileSaved ? ' Oryginalny wyciąg zachowano lokalnie na tym urządzeniu.' : ''}`,
       });
       setDuplicateDecisions({});
     } catch (error) {

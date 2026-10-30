@@ -9,7 +9,11 @@ import type {
   ImportPeriodView,
   StatementImportRowRequest,
 } from '../shared/contracts';
-import { COLLECTIONS } from '../shared/firestorePaths';
+import {
+  budgetCollectionPath,
+  budgetDocumentPath,
+  COLLECTIONS,
+} from '../shared/firestorePaths';
 import { DomainError } from '../shared/domain/errors';
 import { findMatchingUserRule } from '../shared/domain/transactions';
 import { validateCommitCsvImportRequest } from '../shared/validators';
@@ -29,6 +33,13 @@ function sha256(value: string): string {
 
 function importHashKey(accountId: string, fileHash: string): string {
   return sha256(`${accountId}\0${fileHash}`);
+}
+
+export function importBatchFileHashDocumentId(
+  accountId: string,
+  fileHash: string,
+): string {
+  return importHashKey(accountId, fileHash);
 }
 
 function bankKey(accountId: string, bankId: string): string {
@@ -123,14 +134,7 @@ export async function commitCsvImport(
     throw new DomainError('INVALID_ARGUMENT', 'Invalid CSV import request.');
   }
 
-  const accountRef = deps.db.doc(
-    `${COLLECTIONS.accounts}/${validated.account_id}`,
-  );
   const importId = deps.newId();
-  const batchRef = deps.db.doc(`${IMPORT_BATCHES}/${importId}`);
-  const hashRef = deps.db.doc(
-    `${HASH_INDEX}/${importHashKey(validated.account_id, validated.file_sha256)}`,
-  );
 
   return deps.db.runTransaction(async (tx) => {
     const actor = await readActiveMembership(
@@ -140,6 +144,30 @@ export async function commitCsvImport(
       uid,
     );
     if (!actor) throw new DomainError('NOT_ACTIVE_MEMBER');
+    const accountRef = deps.db.doc(
+      budgetDocumentPath(
+        validated.budget_id,
+        actor.active_revision_id,
+        COLLECTIONS.accounts,
+        validated.account_id,
+      ),
+    );
+    const batchRef = deps.db.doc(
+      budgetDocumentPath(
+        validated.budget_id,
+        actor.active_revision_id,
+        IMPORT_BATCHES,
+        importId,
+      ),
+    );
+    const hashRef = deps.db.doc(
+      budgetDocumentPath(
+        validated.budget_id,
+        actor.active_revision_id,
+        HASH_INDEX,
+        importHashKey(validated.account_id, validated.file_sha256),
+      ),
+    );
 
     const [accountSnap, previousHash] = await Promise.all([
       tx.get(accountRef),
@@ -165,7 +193,12 @@ export async function commitCsvImport(
     if (previousHash.exists) {
       const existingBatch = await tx.get(
         deps.db.doc(
-          `${IMPORT_BATCHES}/${previousHash.get('import_batch_id') as string}`,
+          budgetDocumentPath(
+            validated.budget_id,
+            actor.active_revision_id,
+            IMPORT_BATCHES,
+            previousHash.get('import_batch_id') as string,
+          ),
         ),
       );
       if (!existingBatch.exists) {
@@ -177,12 +210,24 @@ export async function commitCsvImport(
     const [categories, categorizationRules] = await Promise.all([
       tx.get(
         deps.db
-          .collection(COLLECTIONS.categories)
+          .collection(
+            budgetCollectionPath(
+              validated.budget_id,
+              actor.active_revision_id,
+              COLLECTIONS.categories,
+            ),
+          )
           .where('budget_id', '==', validated.budget_id),
       ),
       tx.get(
         deps.db
-          .collection(COLLECTIONS.categorizationRules)
+          .collection(
+            budgetCollectionPath(
+              validated.budget_id,
+              actor.active_revision_id,
+              COLLECTIONS.categorizationRules,
+            ),
+          )
           .where('budget_id', '==', validated.budget_id)
           .where('source', '==', 'USER')
           .where('enabled', '==', true),
@@ -202,7 +247,14 @@ export async function commitCsvImport(
           validated.account_id,
           row.bank_transaction_id,
         );
-        const transactionRef = deps.db.doc(`${TRANSACTIONS}/${transactionId}`);
+        const transactionRef = deps.db.doc(
+          budgetDocumentPath(
+            validated.budget_id,
+            actor.active_revision_id,
+            TRANSACTIONS,
+            transactionId,
+          ),
+        );
         return {
           row,
           fingerprint,
@@ -212,7 +264,13 @@ export async function commitCsvImport(
         };
       }
       const duplicateQuery = deps.db
-        .collection(TRANSACTIONS)
+        .collection(
+          budgetCollectionPath(
+            validated.budget_id,
+            actor.active_revision_id,
+            TRANSACTIONS,
+          ),
+        )
         .where('account_id', '==', validated.account_id)
         .where('normalized_fingerprint', '==', fingerprint)
         .limit(1);
@@ -221,7 +279,14 @@ export async function commitCsvImport(
         row,
         fingerprint,
         transactionId,
-        transactionRef: deps.db.doc(`${TRANSACTIONS}/${transactionId}`),
+        transactionRef: deps.db.doc(
+          budgetDocumentPath(
+            validated.budget_id,
+            actor.active_revision_id,
+            TRANSACTIONS,
+            transactionId,
+          ),
+        ),
         duplicateCheck: { kind: 'fingerprint', query: duplicateQuery },
       };
     });
@@ -251,7 +316,12 @@ export async function commitCsvImport(
       [...balanceRows.keys()].map((date) => [
         date,
         deps.db.doc(
-          `${BALANCE_SNAPSHOTS}/${balanceSnapshotId(validated.account_id, date)}`,
+          budgetDocumentPath(
+            validated.budget_id,
+            actor.active_revision_id,
+            BALANCE_SNAPSHOTS,
+            balanceSnapshotId(validated.account_id, date),
+          ),
         ),
       ]),
     );
@@ -404,12 +474,22 @@ export async function commitCsvImport(
     });
     for (const period of periods) {
       const periodId = deps.newId();
-      tx.create(deps.db.doc(`${IMPORT_PERIODS}/${periodId}`), {
-        budget_id: validated.budget_id,
-        import_batch_id: importId,
-        period_start: period.period_start,
-        period_end: period.period_end,
-      });
+      tx.create(
+        deps.db.doc(
+          budgetDocumentPath(
+            validated.budget_id,
+            actor.active_revision_id,
+            IMPORT_PERIODS,
+            periodId,
+          ),
+        ),
+        {
+          budget_id: validated.budget_id,
+          import_batch_id: importId,
+          period_start: period.period_start,
+          period_end: period.period_end,
+        },
+      );
     }
     for (const [date, balance] of balanceRowsToWrite) {
       const ref = balanceRefs.get(date)!;

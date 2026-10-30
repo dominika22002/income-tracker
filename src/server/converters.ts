@@ -77,6 +77,7 @@ export function budgetToData(
     name: budget.name,
     created_at: toTimestamp(budget.created_at),
     created_by_user_id: budget.created_by_user_id,
+    active_revision_id: budget.active_revision_id ?? null,
   };
 }
 
@@ -87,6 +88,7 @@ export function budgetFromSnapshot(snapshot: DocumentSnapshot): BudgetRecord {
     name: value.name,
     created_at: toDate(value.created_at),
     created_by_user_id: value.created_by_user_id ?? null,
+    active_revision_id: value.active_revision_id ?? null,
   };
 }
 

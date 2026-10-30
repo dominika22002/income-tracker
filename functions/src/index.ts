@@ -58,3 +58,7 @@ export const cancelInvitation = callable('cancelInvitation');
 export const leaveBudget = callable('leaveBudget');
 export const removeMember = callable('removeMember');
 export const deleteMyProfile = callable('deleteMyProfile');
+export const exportBudgetBackup = callable('exportBudgetBackup');
+export const beginBudgetRestore = callable('beginBudgetRestore');
+export const writeBudgetRestoreChunk = callable('writeBudgetRestoreChunk');
+export const commitBudgetRestore = callable('commitBudgetRestore');

@@ -4,7 +4,7 @@ import type {
 } from '../shared/contracts';
 import { createTransactionConversion } from '../shared/domain/currency';
 import { DomainError } from '../shared/domain/errors';
-import { COLLECTIONS } from '../shared/firestorePaths';
+import { budgetDocumentPath, COLLECTIONS } from '../shared/firestorePaths';
 import { validateGetTransactionConversionsRequest } from '../shared/validators';
 import { readActiveMembership } from './access';
 import {
@@ -29,7 +29,12 @@ export async function getTransactionConversions(
     const actor = await readActiveMembership(deps, tx, request.budget_id, uid);
     if (!actor) throw new DomainError('NOT_ACTIVE_MEMBER');
     const transactionRef = deps.db.doc(
-      `${COLLECTIONS.transactions}/${request.transaction_id}`,
+      budgetDocumentPath(
+        request.budget_id,
+        actor.active_revision_id,
+        COLLECTIONS.transactions,
+        request.transaction_id,
+      ),
     );
     const preferencesRef = deps.db.doc(`${COLLECTIONS.userPreferences}/${uid}`);
     const [transaction, preferences] = await Promise.all([
@@ -50,6 +55,7 @@ export async function getTransactionConversions(
     ];
     return {
       actorMembershipId: actor.membership_id,
+      activeRevisionId: actor.active_revision_id,
       amount: transaction.get('amount') as string,
       currency: transaction.get('currency') as string,
       operationDate: transaction.get('operation_date') as string,
@@ -99,14 +105,23 @@ export async function getTransactionConversions(
     },
   );
 
-  const transactionRef = deps.db.doc(
-    `${COLLECTIONS.transactions}/${request.transaction_id}`,
-  );
   await deps.db.runTransaction(async (tx) => {
     const actor = await readActiveMembership(deps, tx, request.budget_id, uid);
-    if (!actor || actor.membership_id !== source.actorMembershipId) {
+    if (
+      !actor ||
+      actor.membership_id !== source.actorMembershipId ||
+      actor.active_revision_id !== source.activeRevisionId
+    ) {
       throw new DomainError('NOT_ACTIVE_MEMBER');
     }
+    const transactionRef = deps.db.doc(
+      budgetDocumentPath(
+        request.budget_id,
+        actor.active_revision_id,
+        COLLECTIONS.transactions,
+        request.transaction_id,
+      ),
+    );
     const transaction = await tx.get(transactionRef);
     if (
       !transaction.exists ||
@@ -127,10 +142,15 @@ export async function getTransactionConversions(
 
     const conversionRefs = conversions.map((conversion) =>
       deps.db.doc(
-        `${COLLECTIONS.transactionConversions}/${transactionConversionDocumentId(
-          conversion.transaction_id,
-          conversion.target_currency,
-        )}`,
+        budgetDocumentPath(
+          request.budget_id,
+          actor.active_revision_id,
+          COLLECTIONS.transactionConversions,
+          transactionConversionDocumentId(
+            conversion.transaction_id,
+            conversion.target_currency,
+          ),
+        ),
       ),
     );
     await Promise.all(conversionRefs.map((ref) => tx.get(ref)));

@@ -188,7 +188,7 @@ export function BudgetDetail({
         <div>
           <p>
             {isLastMember
-              ? 'You are the last member: leaving deletes this budget and all its data.'
+              ? 'You are the last member: leaving deletes this budget and all its data. Local backup files are outside the app’s control and must be deleted separately.'
               : isAdmin
                 ? 'You are the administrator: the role passes to the member who joined first.'
                 : 'You will lose access to this budget. Your transactions stay in it.'}

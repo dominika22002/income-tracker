@@ -167,6 +167,30 @@ describe('permanent profile deletion (I-TR-09, FR-87–FR-89)', () => {
     await db
       .doc(`budget_records/${budget.budget_id}/items/t1`)
       .set({ amount: '1.0000' });
+    await Promise.all([
+      db.doc('accounts/legacy-account').set({
+        budget_id: budget.budget_id,
+        label: 'Legacy account',
+      }),
+      db.doc('import_batches/legacy-batch').set({
+        budget_id: budget.budget_id,
+        account_id: 'legacy-account',
+      }),
+      db.doc('import_batch_file_hashes/legacy-hash').set({
+        import_batch_id: 'legacy-batch',
+      }),
+      db.doc('transactions/legacy-transaction').set({
+        budget_id: budget.budget_id,
+        account_id: 'legacy-account',
+      }),
+      db.doc('transaction_tags/legacy-link').set({
+        transaction_id: 'legacy-transaction',
+        tag_id: 'legacy-tag',
+      }),
+      db.doc('transaction_conversions/legacy-conversion').set({
+        transaction_id: 'legacy-transaction',
+      }),
+    ]);
 
     const { deps } = deletionDeps();
     const result = await deleteMyProfile(deps, alice);
@@ -176,6 +200,16 @@ describe('permanent profile deletion (I-TR-09, FR-87–FR-89)', () => {
     expect(await countDocs(db, 'memberships')).toBe(0);
     expect(await countDocs(db, 'invitations')).toBe(0);
     expect(await countDocs(db, 'invitation_tokens')).toBe(0);
+    for (const collection of [
+      'accounts',
+      'import_batches',
+      'import_batch_file_hashes',
+      'transactions',
+      'transaction_tags',
+      'transaction_conversions',
+    ]) {
+      expect(await countDocs(db, collection)).toBe(0);
+    }
     expect(
       await countDocs(db, `budget_records/${budget.budget_id}/items`),
     ).toBe(0);

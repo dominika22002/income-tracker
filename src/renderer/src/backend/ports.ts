@@ -12,6 +12,7 @@ import type {
   TransferGroupView,
   UserPreferencesRecord,
 } from '../../../shared/contracts';
+import type { BackupPayload } from '../../../shared/domain/backup';
 
 export interface Session {
   uid: string;
@@ -38,6 +39,7 @@ export type ErrorListener = (error: Error) => void;
  * credentials, so the security rules (not the UI) decide what is returned.
  */
 export interface BudgetDataSource {
+  exportBudgetSnapshot(budgetId: string, userId: string): Promise<BackupPayload>;
   subscribeMyBudgets(
     uid: string,
     onData: (budgets: MyBudgetView[]) => void,
@@ -72,6 +74,7 @@ export interface BudgetDataSource {
     onError: ErrorListener,
   ): Unsubscribe;
   subscribeAccountBalances(
+    budgetId: string,
     accountIds: readonly string[],
     onData: (balances: AccountBalanceView[]) => void,
     onError: ErrorListener,

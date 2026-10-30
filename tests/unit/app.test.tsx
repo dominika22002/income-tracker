@@ -11,6 +11,15 @@ function mockApi(): IpcApi {
     saveReportPdf: vi.fn().mockResolvedValue({ status: 'canceled' }),
     selectLocalFile: vi.fn().mockResolvedValue({ canceled: true }),
     readLocalStatement: vi.fn().mockResolvedValue({ success: false }),
+    saveBackupFile: vi.fn().mockResolvedValue({ status: 'canceled' }),
+    selectBackupFile: vi.fn().mockResolvedValue({ status: 'canceled' }),
+    archiveImportedStatement: vi.fn().mockResolvedValue({ status: 'saved' }),
+    listLocalStatementFiles: vi
+      .fn()
+      .mockResolvedValue({ status: 'loaded', files: [] }),
+    restoreLocalStatementFiles: vi
+      .fn()
+      .mockResolvedValue({ status: 'saved', count: 0 }),
     writeTestFile: vi
       .fn()
       .mockResolvedValue({ success: true, filePath: '/tmp/test.txt' }),

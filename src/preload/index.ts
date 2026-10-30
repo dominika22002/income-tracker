@@ -9,6 +9,15 @@ const api: IpcApi = {
   selectLocalFile: () => ipcRenderer.invoke('file:select'),
   readLocalStatement: (request) =>
     ipcRenderer.invoke('file:readStatement', request),
+  saveBackupFile: (request) =>
+    ipcRenderer.invoke('backup:saveFile', request),
+  selectBackupFile: () => ipcRenderer.invoke('backup:selectFile'),
+  archiveImportedStatement: (request) =>
+    ipcRenderer.invoke('file:archiveStatement', request),
+  listLocalStatementFiles: (budgetId) =>
+    ipcRenderer.invoke('file:listStatements', { budgetId }),
+  restoreLocalStatementFiles: (request) =>
+    ipcRenderer.invoke('file:restoreStatements', request),
   writeTestFile: (content) => ipcRenderer.invoke('file:writeTest', { content }),
   startGoogleOAuth: () => ipcRenderer.invoke('oauth:start'),
   onOAuthCallback: (listener) => {

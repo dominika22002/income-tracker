@@ -26,6 +26,12 @@ import { ensureUserProfile, updatePreferences } from './profile';
 import { getTransactionConversions } from './conversions';
 import { reviewTransfer } from './transfers';
 import { deleteMyProfile, type ProfileDeletionDeps } from './profileDeletion';
+import {
+  beginBudgetRestore,
+  commitBudgetRestore,
+  exportBudgetBackup,
+  writeBudgetRestoreChunk,
+} from './backups';
 
 /** Subset of the callable-function auth context that the services need. */
 export interface CallableAuth {
@@ -70,6 +76,10 @@ export const CALLABLE_NAMES = [
   'leaveBudget',
   'removeMember',
   'deleteMyProfile',
+  'exportBudgetBackup',
+  'beginBudgetRestore',
+  'writeBudgetRestoreChunk',
+  'commitBudgetRestore',
 ] as const;
 
 export type CallableName = (typeof CALLABLE_NAMES)[number];
@@ -143,6 +153,16 @@ export function createHandlers(
       await removeMember(deps, callerFromAuth(auth), data);
     },
     deleteMyProfile: (auth) => deleteMyProfile(deps, callerFromAuth(auth)),
+    exportBudgetBackup: (auth, data) =>
+      exportBudgetBackup(deps, callerFromAuth(auth), data),
+    beginBudgetRestore: (auth, data) =>
+      beginBudgetRestore(deps, callerFromAuth(auth), data),
+    writeBudgetRestoreChunk: async (auth, data) => {
+      await writeBudgetRestoreChunk(deps, callerFromAuth(auth), data);
+    },
+    commitBudgetRestore: async (auth, data) => {
+      await commitBudgetRestore(deps, callerFromAuth(auth), data);
+    },
   };
 }
 
@@ -228,5 +248,10 @@ export function createLocalBackend(
     leaveBudget: (budget_id) => call('leaveBudget', { budget_id }),
     removeMember: (request) => call('removeMember', request),
     deleteMyProfile: () => call('deleteMyProfile'),
+    exportBudgetBackup: (request) => call('exportBudgetBackup', request),
+    beginBudgetRestore: (request) => call('beginBudgetRestore', request),
+    writeBudgetRestoreChunk: (request) =>
+      call('writeBudgetRestoreChunk', request),
+    commitBudgetRestore: (request) => call('commitBudgetRestore', request),
   };
 }
